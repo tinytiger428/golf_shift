@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#2563eb">
-  <title>シフト管理</title>
+  <title>ゴルフシフト管理</title>
   
-  <!-- PWA Manifest 読み込み -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
 
@@ -32,7 +31,6 @@
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
     }
 
     body {
@@ -41,12 +39,11 @@
       padding-bottom: 90px;
     }
 
-    /* 上部ヘッダー */
     header {
       position: sticky;
       top: 0;
       background: var(--card-bg);
-      padding: 16px 20px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
@@ -64,21 +61,44 @@
       color: var(--text-sub);
     }
 
-    /* 曜日タブナビゲーション */
+    /* 週ナビゲーション */
+    .week-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .current-month-title {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* 日付タブナビゲーション */
     .day-tabs {
       display: flex;
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
       overflow-x: auto;
-      scroll-snap-type: x mandatory;
     }
 
     .tab-item {
       flex: 1;
-      min-width: 60px;
-      padding: 12px 0;
+      min-width: 58px;
+      padding: 10px 0;
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-sub);
       cursor: pointer;
       position: relative;
@@ -87,17 +107,25 @@
     .tab-item.active {
       color: var(--primary);
       font-weight: bold;
+      background: #eff6ff;
     }
 
     .tab-item.active::after {
       content: '';
       position: absolute;
       bottom: 0;
-      left: 20%;
-      width: 60%;
+      left: 10%;
+      width: 80%;
       height: 3px;
       background: var(--primary);
       border-radius: 3px 3px 0 0;
+    }
+
+    .tab-date {
+      font-size: 15px;
+      font-weight: bold;
+      display: block;
+      margin-top: 2px;
     }
 
     .badge {
@@ -106,43 +134,28 @@
       margin-top: 2px;
     }
 
-    /* アラートバナー */
     .container {
       padding: 16px;
     }
 
     .status-card {
-      padding: 14px;
+      padding: 12px 14px;
       border-radius: 12px;
       margin-bottom: 16px;
-      font-size: 14px;
+      font-size: 13px;
     }
 
-    .status-card.danger {
-      background-color: var(--danger-bg);
-      color: #991b1b;
-    }
-
-    .status-card.success {
-      background-color: var(--success-bg);
-      color: #065f46;
-    }
-
-    .status-card.warning {
-      background-color: var(--warning-bg);
-      color: #92400e;
-    }
+    .status-card.danger { background-color: var(--danger-bg); color: #991b1b; }
+    .status-card.success { background-color: var(--success-bg); color: #065f46; }
+    .status-card.warning { background-color: var(--warning-bg); color: #92400e; }
 
     .status-title {
       font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .status-desc {
-      font-size: 12px;
-      margin-top: 4px;
+      font-size: 11px;
+      margin-top: 2px;
       opacity: 0.9;
     }
 
@@ -155,7 +168,7 @@
 
     .member-card {
       background: var(--card-bg);
-      padding: 14px;
+      padding: 12px 14px;
       border-radius: 10px;
       border: 1px solid var(--border);
       display: flex;
@@ -164,7 +177,7 @@
     }
 
     .member-name {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 500;
     }
 
@@ -178,7 +191,6 @@
       cursor: pointer;
     }
 
-    /* ボトムアクション固定ボタン */
     .bottom-bar {
       position: fixed;
       bottom: 0;
@@ -209,18 +221,80 @@
       background: #cbd5e1;
       cursor: not-allowed;
     }
+
+    /* 設定用モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>シフト管理</h1>
-    <div class="sub-info" id="term-info">1期 振替: 0/5 回</div>
+    <h1>ゴルフシフト</h1>
+    <div class="sub-info" id="term-info">今期振替: 0/5 回</div>
   </div>
-  <button class="btn-action" onclick="resetData()">データ初期化</button>
+  <button class="btn-action" onclick="openMasterConfig()">固定パターン設定</button>
 </header>
 
+<!-- 週切り替えナビ -->
+<div class="week-nav">
+  <button class="nav-btn" onclick="changeWeek(-1)">＜ 前の週</button>
+  <div class="current-month-title" id="week-title">----年--月</div>
+  <button class="nav-btn" onclick="changeWeek(1)">次の週 ＞</button>
+</div>
+
+<!-- 日付タブ (月〜土) -->
 <div class="day-tabs" id="day-tabs"></div>
 
 <div class="container">
@@ -232,48 +306,115 @@
   <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由シフトを追加</button>
 </div>
 
+<!-- 固定パターン設定モーダル -->
+<div class="modal" id="master-modal">
+  <div class="modal-content">
+    <div class="modal-title">曜日ごとの固定メンバー設定</div>
+    <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 12px;">※カンマ(,)区切りで名前を入力してください</p>
+    <div id="master-inputs"></div>
+    <div class="modal-actions">
+      <button class="btn-action" onclick="closeMasterConfig()">キャンセル</button>
+      <button class="btn-main" style="padding: 8px 16px;" onclick="saveMasterConfig()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  const DAYS = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
   const MIN_STAFF = 6;
   const MAX_STAFF = 14;
   const MAX_RESCHEDULE = 5;
 
-  let currentDay = '月曜日';
+  // 曜日マッピング
+  const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // ローカルストレージからデータ読み込み
-  let shiftData = JSON.parse(localStorage.getItem('shiftData')) || {
-    '月曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
-    '火曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE'], // 5人(要代理)
-    '水曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG'],
-    '木曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
-    '金曜日': Array.from({length: 14}, (_, i) => `スタッフ${i+1}`), // 14人(満員)
-    '土曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG']
+  // デフォルトの曜日別固定枠
+  const defaultMaster = {
+    '月': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '火': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE'], // 5名(要代理)
+    '水': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG'],
+    '木': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '金': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG', 'スタッフH'],
+    '土': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG']
   };
 
+  let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
+  let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; // 日付ごとの上書き設定 (YYYY-MM-DD: [])
   let rescheduleCount = parseInt(localStorage.getItem('rescheduleCount') || '0', 10);
 
-  function saveData() {
-    localStorage.setItem('shiftData', JSON.stringify(shiftData));
+  // 現在表示中の週の開始日 (月曜日基準)
+  let currentMonday = getMonday(new Date());
+  let selectedDateStr = formatDate(currentMonday); // 初期選択日付 (YYYY-MM-DD)
+
+  function getMonday(d) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 月曜日を取得
+    return new Date(date.setDate(diff));
+  }
+
+  function formatDate(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  }
+
+  function getWeekDays(monday) {
+    const days = [];
+    for (let i = 0; i < 6; i++) { // 月〜土 (6日間)
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }
+
+  function getShiftForDate(dateStr) {
+    if (customShifts[dateStr]) {
+      return customShifts[dateStr];
+    }
+    const d = new Date(dateStr);
+    const dayName = WEEKDAYS[d.getDay()];
+    return masterConfig[dayName] ? [...masterConfig[dayName]] : [];
+  }
+
+  function saveStorage() {
+    localStorage.setItem('masterConfig', JSON.stringify(masterConfig));
+    localStorage.setItem('customShifts', JSON.stringify(customShifts));
     localStorage.setItem('rescheduleCount', rescheduleCount.toString());
     render();
   }
 
   function renderTabs() {
+    const weekDays = getWeekDays(currentMonday);
     const tabsContainer = document.getElementById('day-tabs');
-    tabsContainer.innerHTML = DAYS.map(day => `
-      <div class="tab-item ${day === currentDay ? 'active' : ''}" onclick="selectDay('${day}')">
-        ${day.replace('曜日', '')}
-        <span class="badge">${shiftData[day].length}人</span>
-      </div>
-    `).join('');
+
+    // 月表示更新
+    const firstDay = weekDays[0];
+    document.getElementById('week-title').textContent = `${firstDay.getFullYear()}年 ${firstDay.getMonth() + 1}月`;
+
+    tabsContainer.innerHTML = weekDays.map(d => {
+      const dateStr = formatDate(d);
+      const dayName = WEEKDAYS[d.getDay()];
+      const members = getShiftForDate(dateStr);
+      const isSelected = dateStr === selectedDateStr;
+
+      return `
+        <div class="tab-item ${isSelected ? 'active' : ''}" onclick="selectDate('${dateStr}')">
+          <div>${dayName}</div>
+          <span class="tab-date">${d.getDate()}</span>
+          <span class="badge">${members.length}人</span>
+        </div>
+      `;
+    }).join('');
   }
 
   function renderContent() {
     document.getElementById('term-info').textContent = `今期 振替: ${rescheduleCount}/${MAX_RESCHEDULE} 回`;
-    const members = shiftData[currentDay];
+    const members = getShiftForDate(selectedDateStr);
     const count = members.length;
 
-    // ステータス表示
+    // ステータスカード
     const statusBox = document.getElementById('status-container');
     if (count < MIN_STAFF) {
       statusBox.innerHTML = `
@@ -298,7 +439,7 @@
       `;
     }
 
-    // メンバー一覧
+    // メンバーリスト
     const listContainer = document.getElementById('member-list');
     listContainer.innerHTML = members.map(name => `
       <div class="member-card">
@@ -307,22 +448,30 @@
       </div>
     `).join('');
 
-    // 追加ボタンの制御
-    const addBtn = document.getElementById('add-btn');
-    addBtn.disabled = count >= MAX_STAFF;
+    document.getElementById('add-btn').disabled = count >= MAX_STAFF;
   }
 
-  function selectDay(day) {
-    currentDay = day;
+  function selectDate(dateStr) {
+    selectedDateStr = dateStr;
+    render();
+  }
+
+  function changeWeek(direction) {
+    currentMonday.setDate(currentMonday.getDate() + (direction * 7));
+    const weekDays = getWeekDays(currentMonday);
+    selectedDateStr = formatDate(weekDays[0]); // 月曜日にリセット
     render();
   }
 
   function addFreeShift() {
-    if (shiftData[currentDay].length >= MAX_STAFF) return;
-    const name = prompt(`${currentDay}に追加するお名前を入力してください:`);
+    const members = getShiftForDate(selectedDateStr);
+    if (members.length >= MAX_STAFF) return;
+
+    const name = prompt(`${selectedDateStr} に追加するお名前を入力してください:`);
     if (name && name.trim()) {
-      shiftData[currentDay].push(name.trim());
-      saveData();
+      members.push(name.trim());
+      customShifts[selectedDateStr] = members;
+      saveStorage();
     }
   }
 
@@ -332,30 +481,62 @@
       return;
     }
 
-    const availableDays = DAYS.filter(d => d !== currentDay && shiftData[d].length < MAX_STAFF);
-    if (availableDays.length === 0) {
-      alert('振替先の空きがある曜日がありません。');
+    const targetDateStr = prompt(`【振替申請】${memberName}さん\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-10-05)`);
+    if (!targetDateStr) return;
+
+    // 日付フォーマット簡易チェック
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
+      alert('日付の形式が正しくありません (例: 2026-10-05)');
       return;
     }
 
-    const targetDay = prompt(`【振替】${memberName}さんの振替先を入力してください:\n(選択可能: ${availableDays.join(', ')})`);
-    
-    if (targetDay && availableDays.includes(targetDay)) {
-      shiftData[currentDay] = shiftData[currentDay].filter(m => m !== memberName);
-      shiftData[targetDay].push(memberName);
-      rescheduleCount++;
-      saveData();
-      alert(`${targetDay} へ振替を完了しました。`);
-    } else if (targetDay) {
-      alert('無効な曜日、または満員の曜日が選択されました。');
+    const targetMembers = getShiftForDate(targetDateStr);
+    if (targetMembers.length >= MAX_STAFF) {
+      alert(`${targetDateStr} は最大人数の14名に達しているため振替できません。`);
+      return;
     }
+
+    // 元の日付から削除し、新しい日付に追加
+    const currentMembers = getShiftForDate(selectedDateStr).filter(m => m !== memberName);
+    targetMembers.push(memberName);
+
+    customShifts[selectedDateStr] = currentMembers;
+    customShifts[targetDateStr] = targetMembers;
+    rescheduleCount++;
+
+    saveStorage();
+    alert(`${targetDateStr} へ振替しました。（累計振替: ${rescheduleCount}/${MAX_RESCHEDULE}回）`);
   }
 
-  function resetData() {
-    if (confirm('シフトデータを初期状態に戻しますか？')) {
-      localStorage.clear();
-      location.reload();
-    }
+  // 固定マスター設定画面の表示・保存
+  function openMasterConfig() {
+    const inputsContainer = document.getElementById('master-inputs');
+    const days = ['月', '火', '水', '木', '金', '土'];
+    
+    inputsContainer.innerHTML = days.map(d => `
+      <div class="form-group">
+        <label>${d}曜日の固定メンバー</label>
+        <input type="text" id="master-${d}" value="${(masterConfig[d] || []).join(', ')}">
+      </div>
+    `).join('');
+
+    document.getElementById('master-modal').style.display = 'flex';
+  }
+
+  function closeMasterConfig() {
+    document.getElementById('master-modal').style.display = 'none';
+  }
+
+  function saveMasterConfig() {
+    const days = ['月', '火', '水', '木', '金', '土'];
+    days.forEach(d => {
+      const inputVal = document.getElementById(`master-${d}`).value;
+      masterConfig[d] = inputVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    });
+
+    closeMasterConfig();
+    saveStorage();
+    alert('固定パターンを更新しました！');
   }
 
   function render() {
@@ -363,7 +544,6 @@
     renderContent();
   }
 
-  // Service Worker 登録 (PWA用)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
   }
