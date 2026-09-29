@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <title>シフト管理</title>
+  
+  <!-- PWA Manifest 読み込み -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-sub: #64748b;
+      --danger: #ef4444;
+      --danger-bg: #fee2e2;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --success: #10b981;
+      --success-bg: #d1fae5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding-bottom: 90px;
+    }
+
+    /* 上部ヘッダー */
+    header {
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .sub-info {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    /* 曜日タブナビゲーション */
+    .day-tabs {
+      display: flex;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+    }
+
+    .tab-item {
+      flex: 1;
+      min-width: 60px;
+      padding: 12px 0;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-sub);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .tab-item.active {
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .tab-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      width: 60%;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 3px 3px 0 0;
+    }
+
+    .badge {
+      display: block;
+      font-size: 10px;
+      margin-top: 2px;
+    }
+
+    /* アラートバナー */
+    .container {
+      padding: 16px;
+    }
+
+    .status-card {
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .status-card.danger {
+      background-color: var(--danger-bg);
+      color: #991b1b;
+    }
+
+    .status-card.success {
+      background-color: var(--success-bg);
+      color: #065f46;
+    }
+
+    .status-card.warning {
+      background-color: var(--warning-bg);
+      color: #92400e;
+    }
+
+    .status-title {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-desc {
+      font-size: 12px;
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+
+    /* メンバーリスト */
+    .member-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .member-card {
+      background: var(--card-bg);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .member-name {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .btn-action {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-sub);
+      cursor: pointer;
+    }
+
+    /* ボトムアクション固定ボタン */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .btn-main {
+      flex: 1;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .btn-main:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>シフト管理</h1>
+    <div class="sub-info" id="term-info">1期 振替: 0/5 回</div>
+  </div>
+  <button class="btn-action" onclick="resetData()">データ初期化</button>
+</header>
+
+<div class="day-tabs" id="day-tabs"></div>
+
+<div class="container">
+  <div id="status-container"></div>
+  <div class="member-list" id="member-list"></div>
+</div>
+
+<div class="bottom-bar">
+  <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由シフトを追加</button>
+</div>
+
+<script>
+  const DAYS = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+  const MIN_STAFF = 6;
+  const MAX_STAFF = 14;
+  const MAX_RESCHEDULE = 5;
+
+  let currentDay = '月曜日';
+
+  // ローカルストレージからデータ読み込み
+  let shiftData = JSON.parse(localStorage.getItem('shiftData')) || {
+    '月曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '火曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE'], // 5人(要代理)
+    '水曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG'],
+    '木曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '金曜日': Array.from({length: 14}, (_, i) => `スタッフ${i+1}`), // 14人(満員)
+    '土曜日': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG']
+  };
+
+  let rescheduleCount = parseInt(localStorage.getItem('rescheduleCount') || '0', 10);
+
+  function saveData() {
+    localStorage.setItem('shiftData', JSON.stringify(shiftData));
+    localStorage.setItem('rescheduleCount', rescheduleCount.toString());
+    render();
+  }
+
+  function renderTabs() {
+    const tabsContainer = document.getElementById('day-tabs');
+    tabsContainer.innerHTML = DAYS.map(day => `
+      <div class="tab-item ${day === currentDay ? 'active' : ''}" onclick="selectDay('${day}')">
+        ${day.replace('曜日', '')}
+        <span class="badge">${shiftData[day].length}人</span>
+      </div>
+    `).join('');
+  }
+
+  function renderContent() {
+    document.getElementById('term-info').textContent = `今期 振替: ${rescheduleCount}/${MAX_RESCHEDULE} 回`;
+    const members = shiftData[currentDay];
+    const count = members.length;
+
+    // ステータス表示
+    const statusBox = document.getElementById('status-container');
+    if (count < MIN_STAFF) {
+      statusBox.innerHTML = `
+        <div class="status-card danger">
+          <div class="status-title">⚠️ 人員不足 (${count}/${MIN_STAFF}名)</div>
+          <div class="status-desc">6名を下回っているため、代理を立てる必要があります。</div>
+        </div>
+      `;
+    } else if (count < MAX_STAFF) {
+      statusBox.innerHTML = `
+        <div class="status-card success">
+          <div class="status-title">〇 出勤OK (${count}名)</div>
+          <div class="status-desc">最大14名まで「自由シフト」として参加可能です。</div>
+        </div>
+      `;
+    } else {
+      statusBox.innerHTML = `
+        <div class="status-card warning">
+          <div class="status-title">満員 (14/14名)</div>
+          <div class="status-desc">これ以上自由シフトを追加できません。</div>
+        </div>
+      `;
+    }
+
+    // メンバー一覧
+    const listContainer = document.getElementById('member-list');
+    listContainer.innerHTML = members.map(name => `
+      <div class="member-card">
+        <span class="member-name">${name}</span>
+        <button class="btn-action" onclick="requestReschedule('${name}')">振替</button>
+      </div>
+    `).join('');
+
+    // 追加ボタンの制御
+    const addBtn = document.getElementById('add-btn');
+    addBtn.disabled = count >= MAX_STAFF;
+  }
+
+  function selectDay(day) {
+    currentDay = day;
+    render();
+  }
+
+  function addFreeShift() {
+    if (shiftData[currentDay].length >= MAX_STAFF) return;
+    const name = prompt(`${currentDay}に追加するお名前を入力してください:`);
+    if (name && name.trim()) {
+      shiftData[currentDay].push(name.trim());
+      saveData();
+    }
+  }
+
+  function requestReschedule(memberName) {
+    if (rescheduleCount >= MAX_RESCHEDULE) {
+      alert(`1期の振替上限（${MAX_RESCHEDULE}回）に達しています。`);
+      return;
+    }
+
+    const availableDays = DAYS.filter(d => d !== currentDay && shiftData[d].length < MAX_STAFF);
+    if (availableDays.length === 0) {
+      alert('振替先の空きがある曜日がありません。');
+      return;
+    }
+
+    const targetDay = prompt(`【振替】${memberName}さんの振替先を入力してください:\n(選択可能: ${availableDays.join(', ')})`);
+    
+    if (targetDay && availableDays.includes(targetDay)) {
+      shiftData[currentDay] = shiftData[currentDay].filter(m => m !== memberName);
+      shiftData[targetDay].push(memberName);
+      rescheduleCount++;
+      saveData();
+      alert(`${targetDay} へ振替を完了しました。`);
+    } else if (targetDay) {
+      alert('無効な曜日、または満員の曜日が選択されました。');
+    }
+  }
+
+  function resetData() {
+    if (confirm('シフトデータを初期状態に戻しますか？')) {
+      localStorage.clear();
+      location.reload();
+    }
+  }
+
+  function render() {
+    renderTabs();
+    renderContent();
+  }
+
+  // Service Worker 登録 (PWA用)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+
+  render();
+</script>
+</body>
+</html>
