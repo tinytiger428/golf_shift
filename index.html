@@ -176,9 +176,20 @@
       align-items: center;
     }
 
+    .member-info {
+      display: flex;
+      flex-direction: column;
+    }
+
     .member-name {
       font-size: 14px;
       font-weight: 500;
+    }
+
+    .member-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 2px;
     }
 
     .btn-action {
@@ -222,7 +233,7 @@
       cursor: not-allowed;
     }
 
-    /* 設定用モーダル */
+    /* モーダル */
     .modal {
       display: none;
       position: fixed;
@@ -281,8 +292,8 @@
 
 <header>
   <div>
-    <h1>オークラ振替</h1>
-    <div class="sub-info" id="term-info">今期振替: 0/5 回</div>
+    <h1>ゴルフシフト</h1>
+    <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
   <button class="btn-action" onclick="openMasterConfig()">固定パターン設定</button>
 </header>
@@ -322,12 +333,10 @@
 <script>
   const MIN_STAFF = 6;
   const MAX_STAFF = 14;
-  const MAX_RESCHEDULE = 5;
+  const MAX_RESCHEDULE_PER_DAY = 5; // 1人・1曜日あたり最大5回
 
-  // 曜日マッピング
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // デフォルトの曜日別固定枠
   const defaultMaster = {
     '月': ['石川', '大川', '岡', '笠原', '橋本', '三上', '江戸川', '海沼', '児玉', '三浦', '森'],
     '火': ['庄野', '斎藤', '中崎', '京戸', '鎌田', '江戸川', '北出', '下川', '韓', '溝端', '森'], 
@@ -338,17 +347,18 @@
   };
 
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
-  let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; // 日付ごとの上書き設定 (YYYY-MM-DD: [])
-  let rescheduleCount = parseInt(localStorage.getItem('rescheduleCount') || '0', 10);
+  let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; 
+  
+  // 曜日ごとの個人別振替消化数データ: { "月_スタッフA": 2, "火_スタッフA": 0 }
+  let userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
 
-  // 現在表示中の週の開始日 (月曜日基準)
   let currentMonday = getMonday(new Date());
-  let selectedDateStr = formatDate(currentMonday); // 初期選択日付 (YYYY-MM-DD)
+  let selectedDateStr = formatDate(currentMonday);
 
   function getMonday(d) {
     const date = new Date(d);
     const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 月曜日を取得
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(date.setDate(diff));
   }
 
@@ -359,9 +369,14 @@
     return `${year}-${month}-${date}`;
   }
 
+  function getDayName(dateStr) {
+    const d = new Date(dateStr);
+    return WEEKDAYS[d.getDay()];
+  }
+
   function getWeekDays(monday) {
     const days = [];
-    for (let i = 0; i < 6; i++) { // 月〜土 (6日間)
+    for (let i = 0; i < 6; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       days.push(d);
@@ -373,15 +388,25 @@
     if (customShifts[dateStr]) {
       return customShifts[dateStr];
     }
-    const d = new Date(dateStr);
-    const dayName = WEEKDAYS[d.getDay()];
+    const dayName = getDayName(dateStr);
     return masterConfig[dayName] ? [...masterConfig[dayName]] : [];
+  }
+
+  function getRescheduleUsed(memberName, dayName) {
+    const key = `${dayName}_${memberName}`;
+    return userDayRescheduleCounts[key] || 0;
+  }
+
+  function addRescheduleCount(memberName, dayName) {
+    const key = `${dayName}_${memberName}`;
+    const current = userDayRescheduleCounts[key] || 0;
+    userDayRescheduleCounts[key] = current + 1;
   }
 
   function saveStorage() {
     localStorage.setItem('masterConfig', JSON.stringify(masterConfig));
     localStorage.setItem('customShifts', JSON.stringify(customShifts));
-    localStorage.setItem('rescheduleCount', rescheduleCount.toString());
+    localStorage.setItem('userDayRescheduleCounts', JSON.stringify(userDayRescheduleCounts));
     render();
   }
 
@@ -389,7 +414,6 @@
     const weekDays = getWeekDays(currentMonday);
     const tabsContainer = document.getElementById('day-tabs');
 
-    // 月表示更新
     const firstDay = weekDays[0];
     document.getElementById('week-title').textContent = `${firstDay.getFullYear()}年 ${firstDay.getMonth() + 1}月`;
 
@@ -410,9 +434,9 @@
   }
 
   function renderContent() {
-    document.getElementById('term-info').textContent = `今期 振替: ${rescheduleCount}/${MAX_RESCHEDULE} 回`;
     const members = getShiftForDate(selectedDateStr);
     const count = members.length;
+    const currentDayName = getDayName(selectedDateStr);
 
     // ステータスカード
     const statusBox = document.getElementById('status-container');
@@ -441,12 +465,20 @@
 
     // メンバーリスト
     const listContainer = document.getElementById('member-list');
-    listContainer.innerHTML = members.map(name => `
-      <div class="member-card">
-        <span class="member-name">${name}</span>
-        <button class="btn-action" onclick="requestReschedule('${name}')">振替</button>
-      </div>
-    `).join('');
+    listContainer.innerHTML = members.map(name => {
+      const used = getRescheduleUsed(name, currentDayName);
+      const remaining = MAX_RESCHEDULE_PER_DAY - used;
+      
+      return `
+        <div class="member-card">
+          <div class="member-info">
+            <span class="member-name">${name}</span>
+            <span class="member-sub">${currentDayName}曜枠 振替残: ${remaining} / ${MAX_RESCHEDULE_PER_DAY} 回</span>
+          </div>
+          <button class="btn-action" onclick="requestReschedule('${name}')">振替</button>
+        </div>
+      `;
+    }).join('');
 
     document.getElementById('add-btn').disabled = count >= MAX_STAFF;
   }
@@ -459,7 +491,7 @@
   function changeWeek(direction) {
     currentMonday.setDate(currentMonday.getDate() + (direction * 7));
     const weekDays = getWeekDays(currentMonday);
-    selectedDateStr = formatDate(weekDays[0]); // 月曜日にリセット
+    selectedDateStr = formatDate(weekDays[0]);
     render();
   }
 
@@ -476,15 +508,17 @@
   }
 
   function requestReschedule(memberName) {
-    if (rescheduleCount >= MAX_RESCHEDULE) {
-      alert(`1期の振替上限（${MAX_RESCHEDULE}回）に達しています。`);
+    const currentDayName = getDayName(selectedDateStr);
+    const used = getRescheduleUsed(memberName, currentDayName);
+
+    if (used >= MAX_RESCHEDULE_PER_DAY) {
+      alert(`${memberName}さんの【${currentDayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しているため、振替できません。`);
       return;
     }
 
-    const targetDateStr = prompt(`【振替申請】${memberName}さん\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-10-05)`);
+    const targetDateStr = prompt(`【振替申請】${memberName}さん（${currentDayName}曜枠 振替残:${MAX_RESCHEDULE_PER_DAY - used}回）\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-10-05)`);
     if (!targetDateStr) return;
 
-    // 日付フォーマット簡易チェック
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
       alert('日付の形式が正しくありません (例: 2026-10-05)');
       return;
@@ -496,19 +530,20 @@
       return;
     }
 
-    // 元の日付から削除し、新しい日付に追加
+    // 移動処理
     const currentMembers = getShiftForDate(selectedDateStr).filter(m => m !== memberName);
     targetMembers.push(memberName);
 
     customShifts[selectedDateStr] = currentMembers;
     customShifts[targetDateStr] = targetMembers;
-    rescheduleCount++;
+
+    // 該当曜日での振替カウントを追加
+    addRescheduleCount(memberName, currentDayName);
 
     saveStorage();
-    alert(`${targetDateStr} へ振替しました。（累計振替: ${rescheduleCount}/${MAX_RESCHEDULE}回）`);
+    alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
   }
 
-  // 固定マスター設定画面の表示・保存
   function openMasterConfig() {
     const inputsContainer = document.getElementById('master-inputs');
     const days = ['月', '火', '水', '木', '金', '土'];
