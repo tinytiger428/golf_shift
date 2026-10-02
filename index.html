@@ -228,11 +228,28 @@
       margin-top: 2px;
     }
 
+    .tag-type {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+
+    .tag-transfer { background: var(--warning-bg); color: #7a5200; }
+    .tag-free { background: var(--primary-light); color: var(--primary); }
+
+    .action-group {
+      display: flex;
+      gap: 6px;
+    }
+
     .btn-action {
       background: var(--card-bg);
       border: 1px solid var(--primary);
       color: var(--primary);
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
@@ -241,6 +258,15 @@
 
     .btn-action:hover {
       background: var(--primary-light);
+    }
+
+    .btn-cancel {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-cancel:hover {
+      background: var(--danger-bg);
     }
 
     .bottom-bar {
@@ -394,6 +420,8 @@
   };
 
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
+  
+  // customShifts: { "YYYY-MM-DD": [ { name: "名前", originDate: "YYYY-MM-DD", type: "fixed" | "transfer" | "free" } ] }
   let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; 
   let userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
 
@@ -429,12 +457,18 @@
     return days;
   }
 
-  function getShiftForDate(dateStr) {
+  // 指定日のシフトリスト取得（オブジェクト配列形式に標準化）
+  function getShiftObjectsForDate(dateStr) {
     if (customShifts[dateStr]) {
       return customShifts[dateStr];
     }
     const dayName = getDayName(dateStr);
-    return masterConfig[dayName] ? [...masterConfig[dayName]] : [];
+    const fixedMembers = masterConfig[dayName] || [];
+    return fixedMembers.map(name => ({
+      name: name,
+      originDate: dateStr,
+      type: 'fixed'
+    }));
   }
 
   function getRescheduleUsed(memberName, dayName) {
@@ -442,10 +476,10 @@
     return userDayRescheduleCounts[key] || 0;
   }
 
-  function addRescheduleCount(memberName, dayName) {
+  function updateRescheduleCount(memberName, dayName, delta) {
     const key = `${dayName}_${memberName}`;
     const current = userDayRescheduleCounts[key] || 0;
-    userDayRescheduleCounts[key] = current + 1;
+    userDayRescheduleCounts[key] = Math.max(0, current + delta);
   }
 
   function saveStorage() {
@@ -465,7 +499,7 @@
     tabsContainer.innerHTML = weekDays.map(d => {
       const dateStr = formatDate(d);
       const dayName = WEEKDAYS[d.getDay()];
-      const members = getShiftForDate(dateStr);
+      const members = getShiftObjectsForDate(dateStr);
       const isSelected = dateStr === selectedDateStr;
 
       return `
@@ -479,7 +513,7 @@
   }
 
   function renderContent() {
-    const members = getShiftForDate(selectedDateStr);
+    const members = getShiftObjectsForDate(selectedDateStr);
     const count = members.length;
     const currentDayName = getDayName(selectedDateStr);
 
@@ -508,17 +542,41 @@
     }
 
     const listContainer = document.getElementById('member-list');
-    listContainer.innerHTML = members.map(name => {
-      const used = getRescheduleUsed(name, currentDayName);
+    listContainer.innerHTML = members.map((item, index) => {
+      const used = getRescheduleUsed(item.name, currentDayName);
       const remaining = MAX_RESCHEDULE_PER_DAY - used;
-      
+
+      let typeTag = '';
+      if (item.type === 'transfer') {
+        typeTag = `<span class="tag-type tag-transfer">振替枠 (${item.originDate}から)</span>`;
+      } else if (item.type === 'free') {
+        typeTag = `<span class="tag-type tag-free">自由シフト</span>`;
+      }
+
+      let actions = '';
+      if (item.type === 'free') {
+        // 自由シフト削除ボタン
+        actions = `<button class="btn-action btn-cancel" onclick="removeFreeShift(${index})">削除</button>`;
+      } else if (item.type === 'transfer') {
+        // 振替取消ボタン
+        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', index)">振替取消</button>`;
+      } else {
+        // 通常固定枠の振替申請
+        actions = `<button class="btn-action" onclick="requestReschedule('${item.name}', index)">振替</button>`;
+      }
+
       return `
         <div class="member-card">
           <div class="member-info">
-            <span class="member-name">${name}</span>
+            <div>
+              <span class="member-name">${item.name}</span>
+              ${typeTag}
+            </div>
             <span class="member-sub">${currentDayName}曜枠 振替残: ${remaining} / ${MAX_RESCHEDULE_PER_DAY} 回</span>
           </div>
-          <button class="btn-action" onclick="requestReschedule('${name}')">振替</button>
+          <div class="action-group">
+            ${actions}
+          </div>
         </div>
       `;
     }).join('');
@@ -538,19 +596,36 @@
     render();
   }
 
+  // 自由シフト追加
   function addFreeShift() {
-    const members = getShiftForDate(selectedDateStr);
+    const members = getShiftObjectsForDate(selectedDateStr);
     if (members.length >= MAX_STAFF) return;
 
     const name = prompt(`${selectedDateStr} に追加するお名前を入力してください:`);
     if (name && name.trim()) {
-      members.push(name.trim());
+      members.push({
+        name: name.trim(),
+        originDate: selectedDateStr,
+        type: 'free'
+      });
       customShifts[selectedDateStr] = members;
       saveStorage();
     }
   }
 
-  function requestReschedule(memberName) {
+  // 自由シフトの削除
+  function removeFreeShift(index) {
+    const members = getShiftObjectsForDate(selectedDateStr);
+    const item = members[index];
+    if (confirm(`${item.name}さんの自由シフトを削除しますか？`)) {
+      members.splice(index, 1);
+      customShifts[selectedDateStr] = members;
+      saveStorage();
+    }
+  }
+
+  // 振替の申請
+  function requestReschedule(memberName, index) {
     const currentDayName = getDayName(selectedDateStr);
     const used = getRescheduleUsed(memberName, currentDayName);
 
@@ -567,22 +642,59 @@
       return;
     }
 
-    const targetMembers = getShiftForDate(targetDateStr);
+    const targetMembers = getShiftObjectsForDate(targetDateStr);
     if (targetMembers.length >= MAX_STAFF) {
       alert(`${targetDateStr} は最大人数の14名に達しているため振替できません。`);
       return;
     }
 
-    const currentMembers = getShiftForDate(selectedDateStr).filter(m => m !== memberName);
-    targetMembers.push(memberName);
+    // 元の日付から削除
+    const currentMembers = getShiftObjectsForDate(selectedDateStr);
+    currentMembers.splice(index, 1);
+
+    // 振替先へ追加
+    targetMembers.push({
+      name: memberName,
+      originDate: selectedDateStr,
+      type: 'transfer'
+    });
 
     customShifts[selectedDateStr] = currentMembers;
     customShifts[targetDateStr] = targetMembers;
 
-    addRescheduleCount(memberName, currentDayName);
+    // カウントを消費
+    updateRescheduleCount(memberName, currentDayName, 1);
 
     saveStorage();
     alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
+  }
+
+  // 振替の取り消し
+  function cancelReschedule(memberName, originDateStr, index) {
+    const originDayName = getDayName(originDateStr);
+
+    if (confirm(`${memberName}さんの ${originDateStr} からの振替を取り消し、元に戻しますか？\n（消費した振替回数は1回戻ります）`)) {
+      // 振替先（現在の画面）から削除
+      const currentMembers = getShiftObjectsForDate(selectedDateStr);
+      currentMembers.splice(index, 1);
+
+      // 元の日付へ固定枠として復帰
+      const originMembers = getShiftObjectsForDate(originDateStr);
+      originMembers.push({
+        name: memberName,
+        originDate: originDateStr,
+        type: 'fixed'
+      });
+
+      customShifts[selectedDateStr] = currentMembers;
+      customShifts[originDateStr] = originMembers;
+
+      // 振替カウントを1回還元
+      updateRescheduleCount(memberName, originDayName, -1);
+
+      saveStorage();
+      alert(`${memberName}さんの振替を取り消し、${originDateStr} の枠に戻しました。`);
+    }
   }
 
   function openMasterConfig() {
