@@ -420,8 +420,30 @@
   };
 
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
-  let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; 
-  let userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
+  let customShifts = {}; 
+  let userDayRescheduleCounts = {};
+
+  // 古いデータの自動初期化・クリーニング処理
+  try {
+    const rawShifts = localStorage.getItem('customShifts');
+    if (rawShifts) {
+      const parsed = JSON.parse(rawShifts);
+      // 中身が古い型（文字列の配列）だった場合はリセットする
+      let isOldFormat = false;
+      for (let key in parsed) {
+        if (Array.isArray(parsed[key]) && parsed[key].length > 0 && typeof parsed[key][0] === 'string') {
+          isOldFormat = true;
+          break;
+        }
+      }
+      if (!isOldFormat) {
+        customShifts = parsed;
+      }
+    }
+    userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
+  } catch (e) {
+    console.error("Data load error, reset to default", e);
+  }
 
   let currentMonday = getMonday(new Date());
   let selectedDateStr = formatDate(currentMonday);
