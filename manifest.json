@@ -1,6 +1,6 @@
 {
-  "name": "シフト管理アプリ",
-  "short_name": "シフト管理",
+  "name": "オークラ振替連絡アプリ",
+  "short_name": "オークラ振替連絡",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
