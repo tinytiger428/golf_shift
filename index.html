@@ -647,11 +647,11 @@
       return;
     }
 
-    const targetDateStr = prompt(`【振替申請】${memberName}さん（${currentDayName}曜枠 振替残:${MAX_RESCHEDULE_PER_DAY - used}回）\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-10-05)`);
+    const targetDateStr = prompt(`【振替申請】${memberName}さん（${currentDayName}曜枠 振替残:${MAX_RESCHEDULE_PER_DAY - used}回）\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-09-05)`);
     if (!targetDateStr) return;
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
-      alert('日付の形式が正しくありません (例: 2026-10-05)');
+      alert('日付の形式が正しくありません (例: 2026-09-05)');
       return;
     }
 
