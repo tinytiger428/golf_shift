@@ -69,13 +69,18 @@
       margin-top: 2px;
     }
 
+    .header-btns {
+      display: flex;
+      gap: 6px;
+    }
+
     .btn-header {
       background: rgba(255, 255, 255, 0.15);
       border: 1px solid rgba(255, 255, 255, 0.4);
       color: #ffffff;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -321,7 +326,7 @@
       padding: 20px;
       width: 100%;
       max-width: 400px;
-      max-height: 80vh;
+      max-height: 85vh;
       overflow-y: auto;
       border-top: 5px solid var(--primary);
     }
@@ -334,7 +339,7 @@
     }
 
     .form-group {
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .form-group label {
@@ -347,7 +352,7 @@
 
     .form-group input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 14px;
@@ -357,7 +362,30 @@
       display: flex;
       justify-content: flex-end;
       gap: 8px;
-      margin-top: 16px;
+      margin-top: 20px;
+    }
+
+    .data-section {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .btn-danger-outline {
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      background: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      width: 100%;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .btn-danger-outline:hover {
+      background: var(--danger-bg);
     }
   </style>
 </head>
@@ -368,7 +396,10 @@
     <h1>オークラ振替連絡</h1>
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
-  <button class="btn-header" onclick="openMasterConfig()">固定パターン設定</button>
+  <div class="header-btns">
+    <button class="btn-header" onclick="openMasterConfig()">固定設定</button>
+    <button class="btn-header" onclick="openDataModal()">データ管理</button>
+  </div>
 </header>
 
 <!-- 週切り替えナビ -->
@@ -387,7 +418,7 @@
 </div>
 
 <div class="bottom-bar">
-  <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由シフトを追加</button>
+  <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由練習を追加</button>
 </div>
 
 <!-- 固定パターン設定モーダル -->
@@ -397,8 +428,52 @@
     <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 12px;">※カンマ(,)区切りで名前を入力してください</p>
     <div id="master-inputs"></div>
     <div class="modal-actions">
-      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeMasterConfig()">キャンセル</button>
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('master-modal')">キャンセル</button>
       <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="saveMasterConfig()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 振替先選択モーダル -->
+<div class="modal" id="reschedule-modal">
+  <div class="modal-content">
+    <div class="modal-title" id="reschedule-modal-title">振替先の選択</div>
+    <div class="form-group">
+      <label>振替希望日</label>
+      <input type="date" id="reschedule-date-input">
+    </div>
+    <input type="hidden" id="reschedule-member-name">
+    <input type="hidden" id="reschedule-member-index">
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('reschedule-modal')">キャンセル</button>
+      <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="executeReschedule()">振替を確定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- データ管理・バックアップモーダル -->
+<div class="modal" id="data-modal">
+  <div class="modal-content">
+    <div class="modal-title">データ管理・バックアップ</div>
+    
+    <div class="form-group">
+      <label>データバックアップ（JSON出力）</label>
+      <button class="btn-action" style="width: 100%;" onclick="exportData()">バックアップファイルを保存</button>
+    </div>
+
+    <div class="form-group">
+      <label>データ復元（JSON読み込み）</label>
+      <input type="file" id="import-file" accept=".json" onchange="importData(event)" style="font-size: 12px;">
+    </div>
+
+    <div class="data-section">
+      <label style="font-size: 12px; color: var(--text-sub); font-weight: bold;">リセット操作</label>
+      <button class="btn-danger-outline" onclick="resetRescheduleCounts()">振替回数のみ初期化（新学期など）</button>
+      <button class="btn-danger-outline" onclick="resetAllData()">すべてのデータを初期化</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('data-modal')">閉じる</button>
     </div>
   </div>
 </div>
@@ -423,12 +498,11 @@
   let customShifts = {}; 
   let userDayRescheduleCounts = {};
 
-  // 古いデータの自動初期化・クリーニング処理
+  // データ読み込み処理
   try {
     const rawShifts = localStorage.getItem('customShifts');
     if (rawShifts) {
       const parsed = JSON.parse(rawShifts);
-      // 中身が古い型（文字列の配列）だった場合はリセットする
       let isOldFormat = false;
       for (let key in parsed) {
         if (Array.isArray(parsed[key]) && parsed[key].length > 0 && typeof parsed[key][0] === 'string') {
@@ -463,7 +537,7 @@
   }
 
   function getDayName(dateStr) {
-    const d = new Date(dateStr);
+    const d = new Date(dateStr.replace(/-/g, '/'));
     return WEEKDAYS[d.getDay()];
   }
 
@@ -506,6 +580,10 @@
     localStorage.setItem('customShifts', JSON.stringify(customShifts));
     localStorage.setItem('userDayRescheduleCounts', JSON.stringify(userDayRescheduleCounts));
     render();
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
   }
 
   function renderTabs() {
@@ -555,7 +633,7 @@
       statusBox.innerHTML = `
         <div class="status-card warning">
           <div class="status-title">満員 (14/14名)</div>
-          <div class="status-desc">これ以上自由連習を追加できません。</div>
+          <div class="status-desc">これ以上自由練習を追加できません。</div>
         </div>
       `;
     }
@@ -578,7 +656,7 @@
       } else if (item.type === 'transfer') {
         actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', ${index})">振替取消</button>`;
       } else {
-        actions = `<button class="btn-action" onclick="requestReschedule('${item.name}', ${index})">振替</button>`;
+        actions = `<button class="btn-action" onclick="openRescheduleModal('${item.name}', ${index})">振替</button>`;
       }
 
       return `
@@ -638,7 +716,8 @@
     }
   }
 
-  function requestReschedule(memberName, index) {
+  /* 振替モーダルの開閉と実行 */
+  function openRescheduleModal(memberName, index) {
     const currentDayName = getDayName(selectedDateStr);
     const used = getRescheduleUsed(memberName, currentDayName);
 
@@ -647,11 +726,25 @@
       return;
     }
 
-    const targetDateStr = prompt(`【振替申請】${memberName}さん（${currentDayName}曜枠 振替残:${MAX_RESCHEDULE_PER_DAY - used}回）\n振替先の日付を YYYY-MM-DD 形式で入力してください:\n(例: 2026-09-05)`);
-    if (!targetDateStr) return;
+    document.getElementById('reschedule-modal-title').textContent = `【振替申請】${memberName}さん`;
+    document.getElementById('reschedule-member-name').value = memberName;
+    document.getElementById('reschedule-member-index').value = index;
+    document.getElementById('reschedule-date-input').value = selectedDateStr;
+    document.getElementById('reschedule-modal').style.display = 'flex';
+  }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
-      alert('日付の形式が正しくありません (例: 2026-09-05)');
+  function executeReschedule() {
+    const memberName = document.getElementById('reschedule-member-name').value;
+    const index = parseInt(document.getElementById('reschedule-member-index').value, 10);
+    const targetDateStr = document.getElementById('reschedule-date-input').value;
+
+    if (!targetDateStr) {
+      alert('振替先の日付を選択してください。');
+      return;
+    }
+
+    if (targetDateStr === selectedDateStr) {
+      alert('現在と同じ日付が選択されています。別の日付を選択してください。');
       return;
     }
 
@@ -660,6 +753,14 @@
       alert(`${targetDateStr} は最大人数の14名に達しているため振替できません。`);
       return;
     }
+
+    if (targetMembers.some(m => m.name === memberName)) {
+      alert(`${memberName}さんは既に ${targetDateStr} に登録されています。`);
+      return;
+    }
+
+    const currentDayName = getDayName(selectedDateStr);
+    const used = getRescheduleUsed(memberName, currentDayName);
 
     // 元の日付から削除
     const currentMembers = getShiftObjectsForDate(selectedDateStr);
@@ -675,10 +776,11 @@
     customShifts[selectedDateStr] = currentMembers;
     customShifts[targetDateStr] = targetMembers;
 
-    // カウントを消費
+    // カウント消費
     updateRescheduleCount(memberName, currentDayName, 1);
 
     saveStorage();
+    closeModal('reschedule-modal');
     alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
   }
 
@@ -686,11 +788,9 @@
     const originDayName = getDayName(originDateStr);
 
     if (confirm(`${memberName}さんの ${originDateStr} からの振替を取り消し、元に戻しますか？\n（消費した振替回数は1回戻ります）`)) {
-      // 振替先（現在の画面）から削除
       const currentMembers = getShiftObjectsForDate(selectedDateStr);
       currentMembers.splice(index, 1);
 
-      // 元の日付へ固定枠として復帰
       const originMembers = getShiftObjectsForDate(originDateStr);
       originMembers.push({
         name: memberName,
@@ -701,7 +801,6 @@
       customShifts[selectedDateStr] = currentMembers;
       customShifts[originDateStr] = originMembers;
 
-      // 振替カウントを1回還元
       updateRescheduleCount(memberName, originDayName, -1);
 
       saveStorage();
@@ -709,6 +808,7 @@
     }
   }
 
+  /* 固定メンバー設定 */
   function openMasterConfig() {
     const inputsContainer = document.getElementById('master-inputs');
     const days = ['月', '火', '水', '木', '金', '土'];
@@ -723,10 +823,6 @@
     document.getElementById('master-modal').style.display = 'flex';
   }
 
-  function closeMasterConfig() {
-    document.getElementById('master-modal').style.display = 'none';
-  }
-
   function saveMasterConfig() {
     const days = ['月', '火', '水', '木', '金', '土'];
     days.forEach(d => {
@@ -734,9 +830,76 @@
       masterConfig[d] = inputVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
     });
 
-    closeMasterConfig();
+    closeModal('master-modal');
     saveStorage();
     alert('固定パターンを更新しました！');
+  }
+
+  /* データ管理・バックアップ機能 */
+  function openDataModal() {
+    document.getElementById('data-modal').style.display = 'flex';
+  }
+
+  function exportData() {
+    const backupData = {
+      masterConfig: masterConfig,
+      customShifts: customShifts,
+      userDayRescheduleCounts: userDayRescheduleCounts,
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `oakra_shift_backup_${formatDate(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.masterConfig && data.customShifts && data.userDayRescheduleCounts) {
+          masterConfig = data.masterConfig;
+          customShifts = data.customShifts;
+          userDayRescheduleCounts = data.userDayRescheduleCounts;
+          saveStorage();
+          closeModal('data-modal');
+          alert('データを正常に復元しました。');
+        } else {
+          alert('無効なバックアップファイルフォーマットです。');
+        }
+      } catch (err) {
+        alert('ファイルの読み込みに失敗しました。');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetRescheduleCounts() {
+    if (confirm('すべてのメンバーの「振替回数カウント」を初期化（0回に戻す）しますか？\n（※日程のシフト状態は維持されます）')) {
+      userDayRescheduleCounts = {};
+      saveStorage();
+      closeModal('data-modal');
+      alert('振替回数を初期化しました。');
+    }
+  }
+
+  function resetAllData() {
+    if (confirm('【注意】すべてのデータを削除して初期状態に戻しますか？\nこの操作は取り消せません。')) {
+      localStorage.clear();
+      masterConfig = defaultMaster;
+      customShifts = {};
+      userDayRescheduleCounts = {};
+      saveStorage();
+      closeModal('data-modal');
+      alert('すべてのデータを初期化しました。');
+    }
   }
 
   function render() {
