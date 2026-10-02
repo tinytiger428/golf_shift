@@ -420,8 +420,6 @@
   };
 
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
-  
-  // customShifts: { "YYYY-MM-DD": [ { name: "名前", originDate: "YYYY-MM-DD", type: "fixed" | "transfer" | "free" } ] }
   let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; 
   let userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
 
@@ -457,7 +455,6 @@
     return days;
   }
 
-  // 指定日のシフトリスト取得（オブジェクト配列形式に標準化）
   function getShiftObjectsForDate(dateStr) {
     if (customShifts[dateStr]) {
       return customShifts[dateStr];
@@ -555,14 +552,11 @@
 
       let actions = '';
       if (item.type === 'free') {
-        // 自由シフト削除ボタン
         actions = `<button class="btn-action btn-cancel" onclick="removeFreeShift(${index})">削除</button>`;
       } else if (item.type === 'transfer') {
-        // 振替取消ボタン
-        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', index)">振替取消</button>`;
+        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', ${index})">振替取消</button>`;
       } else {
-        // 通常固定枠の振替申請
-        actions = `<button class="btn-action" onclick="requestReschedule('${item.name}', index)">振替</button>`;
+        actions = `<button class="btn-action" onclick="requestReschedule('${item.name}', ${index})">振替</button>`;
       }
 
       return `
@@ -596,7 +590,6 @@
     render();
   }
 
-  // 自由シフト追加
   function addFreeShift() {
     const members = getShiftObjectsForDate(selectedDateStr);
     if (members.length >= MAX_STAFF) return;
@@ -613,7 +606,6 @@
     }
   }
 
-  // 自由シフトの削除
   function removeFreeShift(index) {
     const members = getShiftObjectsForDate(selectedDateStr);
     const item = members[index];
@@ -624,7 +616,6 @@
     }
   }
 
-  // 振替の申請
   function requestReschedule(memberName, index) {
     const currentDayName = getDayName(selectedDateStr);
     const used = getRescheduleUsed(memberName, currentDayName);
@@ -669,7 +660,6 @@
     alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
   }
 
-  // 振替の取り消し
   function cancelReschedule(memberName, originDateStr, index) {
     const originDayName = getDayName(originDateStr);
 
