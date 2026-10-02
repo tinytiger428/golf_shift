@@ -43,6 +43,56 @@
       padding-bottom: 90px;
     }
 
+    /* ログイン認証画面オーバーレイ */
+    .login-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: #ffffff;
+      padding: 28px 24px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      border-top: 6px solid var(--primary);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .login-header h2 {
+      color: var(--primary-dark);
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .login-header p {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .login-error {
+      color: var(--danger);
+      font-size: 12px;
+      background: var(--danger-bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+      display: none;
+      text-align: center;
+    }
+
     header {
       position: sticky;
       top: 0;
@@ -72,6 +122,7 @@
     .header-btns {
       display: flex;
       gap: 6px;
+      align-items: center;
     }
 
     .btn-header {
@@ -83,6 +134,11 @@
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .btn-logout {
+      background: rgba(217, 4, 41, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.5);
     }
 
     /* 週ナビゲーション */
@@ -391,6 +447,30 @@
 </head>
 <body>
 
+<!-- ログイン画面 -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="login-header">
+      <h2>オークラ振替連絡</h2>
+      <p>ログインしてシフトシステムを開始します</p>
+    </div>
+    
+    <div class="login-error" id="login-error">IDまたはパスワードが正しくありません</div>
+
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="login-id">ログインID</label>
+        <input type="text" id="login-id" placeholder="IDを入力" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">パスワード</label>
+        <input type="password" id="login-pass" placeholder="パスワードを入力" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-main" style="width: 100%; margin-top: 10px;">ログイン</button>
+    </form>
+  </div>
+</div>
+
 <header>
   <div>
     <h1>オークラ振替連絡</h1>
@@ -399,6 +479,7 @@
   <div class="header-btns">
     <button class="btn-header" onclick="openMasterConfig()">🔒 固定設定</button>
     <button class="btn-header" onclick="openDataModal()">🔒 データ管理</button>
+    <button class="btn-header btn-logout" onclick="handleLogout()">ログアウト</button>
   </div>
 </header>
 
@@ -479,8 +560,13 @@
 </div>
 
 <script>
-  // 管理者パスワード設定 (必要に応じて書き換えてください)
-  const ADMIN_PASSWORD = "0000";
+  // 認証設定アカウント（必要に応じて書き換えてください）
+  const ACCOUNTS = {
+    // 一般ユーザー用アカウント
+    'user': { pass: '1234', role: 'user' },
+    // 管理者アカウント
+    'admin': { pass: '0000', role: 'admin' }
+  };
 
   const MIN_STAFF = 6;
   const MAX_STAFF = 14;
@@ -500,6 +586,7 @@
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
   let customShifts = {}; 
   let userDayRescheduleCounts = {};
+  let currentUserRole = null; // 'user' または 'admin'
 
   // データ読み込み処理
   try {
@@ -525,15 +612,47 @@
   let currentMonday = getMonday(new Date());
   let selectedDateStr = formatDate(currentMonday);
 
-  // 管理者認証認証関数
-  function verifyAdminPassword() {
-    const inputPass = prompt("管理者用パスワードを入力してください:");
-    if (inputPass === null) return false; // キャンセル時
-    if (inputPass === ADMIN_PASSWORD) {
-      return true;
+  /* ログイン認証処理 */
+  function handleLogin(e) {
+    e.preventDefault();
+    const idInput = document.getElementById('login-id').value.trim();
+    const passInput = document.getElementById('login-pass').value;
+    const errorDiv = document.getElementById('login-error');
+
+    if (ACCOUNTS[idInput] && ACCOUNTS[idInput].pass === passInput) {
+      currentUserRole = ACCOUNTS[idInput].role;
+      sessionStorage.setItem('isLoggedIn', 'true');
+      sessionStorage.setItem('userRole', currentUserRole);
+      
+      document.getElementById('login-overlay').style.display = 'none';
+      errorDiv.style.display = 'none';
+      render();
     } else {
-      alert("パスワードが違います。");
-      return false;
+      errorDiv.style.display = 'block';
+    }
+  }
+
+  /* ログアウト処理 */
+  function handleLogout() {
+    if (confirm('ログアウトしますか？')) {
+      sessionStorage.removeItem('isLoggedIn');
+      sessionStorage.removeItem('userRole');
+      currentUserRole = null;
+      document.getElementById('login-id').value = '';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-overlay').style.display = 'flex';
+    }
+  }
+
+  /* 起動時ログインチェック */
+  function checkAuth() {
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+    if (isLoggedIn === 'true') {
+      currentUserRole = sessionStorage.getItem('userRole');
+      document.getElementById('login-overlay').style.display = 'none';
+      render();
+    } else {
+      document.getElementById('login-overlay').style.display = 'flex';
     }
   }
 
@@ -823,9 +942,12 @@
     }
   }
 
-  /* 固定メンバー設定（要パスワード） */
+  /* 固定メンバー設定 */
   function openMasterConfig() {
-    if (!verifyAdminPassword()) return;
+    if (currentUserRole !== 'admin') {
+      alert('固定設定の変更には管理者権限（admin）が必要です。');
+      return;
+    }
 
     const inputsContainer = document.getElementById('master-inputs');
     const days = ['月', '火', '水', '木', '金', '土'];
@@ -852,9 +974,12 @@
     alert('固定パターンを更新しました！');
   }
 
-  /* データ管理・バックアップ機能（要パスワード） */
+  /* データ管理機能 */
   function openDataModal() {
-    if (!verifyAdminPassword()) return;
+    if (currentUserRole !== 'admin') {
+      alert('データ管理には管理者権限（admin）が必要です。');
+      return;
+    }
 
     document.getElementById('data-modal').style.display = 'flex';
   }
@@ -930,7 +1055,8 @@
     navigator.serviceWorker.register('sw.js');
   }
 
-  render();
+  // 初期読み込み時の認証チェック
+  checkAuth();
 </script>
 </body>
 </html>
