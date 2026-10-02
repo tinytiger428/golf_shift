@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#006241">
-  <title>ゴルフシフト管理</title>
+  <title>オークラ振替連絡</title>
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
@@ -365,7 +365,7 @@
 
 <header>
   <div>
-    <h1>ゴルフシフト</h1>
+    <h1>オークラ振替連絡</h1>
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
   <button class="btn-header" onclick="openMasterConfig()">固定パターン設定</button>
@@ -548,14 +548,14 @@
       statusBox.innerHTML = `
         <div class="status-card success">
           <div class="status-title">〇 出勤OK (${count}名)</div>
-          <div class="status-desc">最大14名まで「自由シフト」として参加可能です。</div>
+          <div class="status-desc">最大14名まで「自由練習」として参加可能です。</div>
         </div>
       `;
     } else {
       statusBox.innerHTML = `
         <div class="status-card warning">
           <div class="status-title">満員 (14/14名)</div>
-          <div class="status-desc">これ以上自由シフトを追加できません。</div>
+          <div class="status-desc">これ以上自由連習を追加できません。</div>
         </div>
       `;
     }
@@ -569,7 +569,7 @@
       if (item.type === 'transfer') {
         typeTag = `<span class="tag-type tag-transfer">振替枠 (${item.originDate}から)</span>`;
       } else if (item.type === 'free') {
-        typeTag = `<span class="tag-type tag-free">自由シフト</span>`;
+        typeTag = `<span class="tag-type tag-free">自由練習</span>`;
       }
 
       let actions = '';
@@ -631,7 +631,7 @@
   function removeFreeShift(index) {
     const members = getShiftObjectsForDate(selectedDateStr);
     const item = members[index];
-    if (confirm(`${item.name}さんの自由シフトを削除しますか？`)) {
+    if (confirm(`${item.name}さんの自由練習を削除しますか？`)) {
       members.splice(index, 1);
       customShifts[selectedDateStr] = members;
       saveStorage();
