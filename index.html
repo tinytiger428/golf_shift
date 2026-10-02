@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#2A885F">
+  <meta name="theme-color" content="#006241">
   <title>ゴルフシフト管理</title>
   
   <link rel="manifest" href="manifest.json">
@@ -11,18 +11,22 @@
 
   <style>
     :root {
-      --primary: #2563eb;
-      --bg: #f8fafc;
+      /* 青学カラー（Aoyama Gakuin Colors） */
+      --primary: #006241;       /* 青学グリーン */
+      --primary-dark: #004830;  /* 濃いグリーン */
+      --primary-light: #e6f2ed; /* 薄いグリーン背景 */
+      --accent-gold: #c5a059;   /* アクセントゴールド */
+      --bg: #f4f7f5;
       --card-bg: #ffffff;
-      --border: #e2e8f0;
-      --text: #0f172a;
-      --text-sub: #64748b;
-      --danger: #ef4444;
-      --danger-bg: #fee2e2;
-      --warning: #f59e0b;
-      --warning-bg: #fef3c7;
-      --success: #10b981;
-      --success-bg: #d1fae5;
+      --border: #d1e0d8;
+      --text: #0d2818;
+      --text-sub: #52796f;
+      --danger: #d90429;
+      --danger-bg: #ffe5e8;
+      --warning: #b57a00;
+      --warning-bg: #fff8e1;
+      --success: #006241;
+      --success-bg: #e6f2ed;
     }
 
     * {
@@ -42,23 +46,38 @@
     header {
       position: sticky;
       top: 0;
-      background: var(--card-bg);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+      background: var(--primary);
+      color: #ffffff;
+      padding: 14px 16px;
+      border-bottom: 3px solid var(--accent-gold);
       display: flex;
       justify-content: space-between;
       align-items: center;
       z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
     h1 {
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
     .sub-info {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: 2px;
+    }
+
+    .btn-header {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 6px;
       font-size: 12px;
-      color: var(--text-sub);
+      font-weight: 600;
+      cursor: pointer;
     }
 
     /* 週ナビゲーション */
@@ -67,29 +86,32 @@
       justify-content: space-between;
       align-items: center;
       background: var(--card-bg);
-      padding: 8px 16px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
     }
 
     .nav-btn {
-      background: var(--bg);
+      background: var(--primary-light);
       border: 1px solid var(--border);
+      color: var(--primary-dark);
       padding: 6px 12px;
       border-radius: 6px;
       font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
     }
 
     .current-month-title {
       font-weight: bold;
-      font-size: 14px;
+      font-size: 15px;
+      color: var(--primary-dark);
     }
 
     /* 日付タブナビゲーション */
     .day-tabs {
       display: flex;
       background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 2px solid var(--border);
       overflow-x: auto;
     }
 
@@ -107,22 +129,21 @@
     .tab-item.active {
       color: var(--primary);
       font-weight: bold;
-      background: #eff6ff;
+      background: var(--primary-light);
     }
 
     .tab-item.active::after {
       content: '';
       position: absolute;
       bottom: 0;
-      left: 10%;
-      width: 80%;
+      left: 0;
+      width: 100%;
       height: 3px;
-      background: var(--primary);
-      border-radius: 3px 3px 0 0;
+      background: var(--accent-gold);
     }
 
     .tab-date {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: bold;
       display: block;
       margin-top: 2px;
@@ -140,14 +161,27 @@
 
     .status-card {
       padding: 12px 14px;
-      border-radius: 12px;
+      border-radius: 10px;
       margin-bottom: 16px;
       font-size: 13px;
+      border-left: 5px solid;
     }
 
-    .status-card.danger { background-color: var(--danger-bg); color: #991b1b; }
-    .status-card.success { background-color: var(--success-bg); color: #065f46; }
-    .status-card.warning { background-color: var(--warning-bg); color: #92400e; }
+    .status-card.danger {
+      background-color: var(--danger-bg);
+      color: var(--danger);
+      border-left-color: var(--danger);
+    }
+    .status-card.success {
+      background-color: var(--success-bg);
+      color: var(--primary-dark);
+      border-left-color: var(--primary);
+    }
+    .status-card.warning {
+      background-color: var(--warning-bg);
+      color: #7a5200;
+      border-left-color: var(--warning);
+    }
 
     .status-title {
       font-weight: bold;
@@ -163,17 +197,18 @@
     .member-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     .member-card {
       background: var(--card-bg);
-      padding: 12px 14px;
+      padding: 12px 16px;
       border-radius: 10px;
       border: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
 
     .member-info {
@@ -182,8 +217,9 @@
     }
 
     .member-name {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
     }
 
     .member-sub {
@@ -193,13 +229,18 @@
     }
 
     .btn-action {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: 6px 14px;
       border-radius: 6px;
       font-size: 12px;
-      color: var(--text-sub);
+      font-weight: 600;
       cursor: pointer;
+    }
+
+    .btn-action:hover {
+      background: var(--primary-light);
     }
 
     .bottom-bar {
@@ -213,6 +254,7 @@
       display: flex;
       gap: 10px;
       padding-bottom: calc(12px + env(safe-area-inset-bottom));
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     }
 
     .btn-main {
@@ -226,10 +268,12 @@
       font-weight: bold;
       cursor: pointer;
       text-align: center;
+      border-bottom: 2px solid var(--primary-dark);
     }
 
     .btn-main:disabled {
-      background: #cbd5e1;
+      background: #a3b1a8;
+      border-bottom: none;
       cursor: not-allowed;
     }
 
@@ -253,11 +297,13 @@
       max-width: 400px;
       max-height: 80vh;
       overflow-y: auto;
+      border-top: 5px solid var(--primary);
     }
 
     .modal-title {
       font-size: 16px;
       font-weight: bold;
+      color: var(--primary-dark);
       margin-bottom: 12px;
     }
 
@@ -270,11 +316,12 @@
       font-size: 12px;
       color: var(--text-sub);
       margin-bottom: 4px;
+      font-weight: 600;
     }
 
     .form-group input {
       width: 100%;
-      padding: 8px;
+      padding: 8px 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 14px;
@@ -295,7 +342,7 @@
     <h1>ゴルフシフト</h1>
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
-  <button class="btn-action" onclick="openMasterConfig()">固定パターン設定</button>
+  <button class="btn-header" onclick="openMasterConfig()">固定パターン設定</button>
 </header>
 
 <!-- 週切り替えナビ -->
@@ -324,8 +371,8 @@
     <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 12px;">※カンマ(,)区切りで名前を入力してください</p>
     <div id="master-inputs"></div>
     <div class="modal-actions">
-      <button class="btn-action" onclick="closeMasterConfig()">キャンセル</button>
-      <button class="btn-main" style="padding: 8px 16px;" onclick="saveMasterConfig()">保存</button>
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeMasterConfig()">キャンセル</button>
+      <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="saveMasterConfig()">保存</button>
     </div>
   </div>
 </div>
@@ -333,23 +380,21 @@
 <script>
   const MIN_STAFF = 6;
   const MAX_STAFF = 14;
-  const MAX_RESCHEDULE_PER_DAY = 5; // 1人・1曜日あたり最大5回
+  const MAX_RESCHEDULE_PER_DAY = 5;
 
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
   const defaultMaster = {
-    '月': ['石川', '大川', '岡', '笠原', '橋本', '三上', '江戸川', '海沼', '児玉', '三浦', '森'],
-    '火': ['庄野', '斎藤', '中崎', '京戸', '鎌田', '江戸川', '北出', '下川', '韓', '溝端', '森'], 
-    '水': ['小秋元', '髙橋', '保脇', '鈴木', '大西（心）', '松村', '下川', '中溝', '松橋', '松本', '吉澤'],
-    '木': ['窪島', '戸ノ下', '三野', '永田', '海沼', '北出', '中村', '古川', '松村', '吉澤'],
-    '金': ['小池', '山下', '工藤', '児玉', '中村', '韓', '松橋', '松本', '三浦', '溝端', '宮島'],
-    '土': ['梅津', '安部', '菊地', '伊東', '大山', '大西（心）', '中溝', '古川', '宮島']
+    '月': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '火': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE'],
+    '水': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG'],
+    '木': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
+    '金': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG', 'スタッフH'],
+    '土': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG']
   };
 
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
   let customShifts = JSON.parse(localStorage.getItem('customShifts')) || {}; 
-  
-  // 曜日ごとの個人別振替消化数データ: { "月_スタッフA": 2, "火_スタッフA": 0 }
   let userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
 
   let currentMonday = getMonday(new Date());
@@ -438,7 +483,6 @@
     const count = members.length;
     const currentDayName = getDayName(selectedDateStr);
 
-    // ステータスカード
     const statusBox = document.getElementById('status-container');
     if (count < MIN_STAFF) {
       statusBox.innerHTML = `
@@ -463,7 +507,6 @@
       `;
     }
 
-    // メンバーリスト
     const listContainer = document.getElementById('member-list');
     listContainer.innerHTML = members.map(name => {
       const used = getRescheduleUsed(name, currentDayName);
@@ -530,14 +573,12 @@
       return;
     }
 
-    // 移動処理
     const currentMembers = getShiftForDate(selectedDateStr).filter(m => m !== memberName);
     targetMembers.push(memberName);
 
     customShifts[selectedDateStr] = currentMembers;
     customShifts[targetDateStr] = targetMembers;
 
-    // 該当曜日での振替カウントを追加
     addRescheduleCount(memberName, currentDayName);
 
     saveStorage();
