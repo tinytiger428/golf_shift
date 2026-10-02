@@ -397,8 +397,8 @@
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
   <div class="header-btns">
-    <button class="btn-header" onclick="openMasterConfig()">固定設定</button>
-    <button class="btn-header" onclick="openDataModal()">データ管理</button>
+    <button class="btn-header" onclick="openMasterConfig()">🔒 固定設定</button>
+    <button class="btn-header" onclick="openDataModal()">🔒 データ管理</button>
   </div>
 </header>
 
@@ -479,6 +479,9 @@
 </div>
 
 <script>
+  // 管理者パスワード設定 (必要に応じて書き換えてください)
+  const ADMIN_PASSWORD = "0000";
+
   const MIN_STAFF = 6;
   const MAX_STAFF = 14;
   const MAX_RESCHEDULE_PER_DAY = 5;
@@ -521,6 +524,18 @@
 
   let currentMonday = getMonday(new Date());
   let selectedDateStr = formatDate(currentMonday);
+
+  // 管理者認証認証関数
+  function verifyAdminPassword() {
+    const inputPass = prompt("管理者用パスワードを入力してください:");
+    if (inputPass === null) return false; // キャンセル時
+    if (inputPass === ADMIN_PASSWORD) {
+      return true;
+    } else {
+      alert("パスワードが違います。");
+      return false;
+    }
+  }
 
   function getMonday(d) {
     const date = new Date(d);
@@ -808,8 +823,10 @@
     }
   }
 
-  /* 固定メンバー設定 */
+  /* 固定メンバー設定（要パスワード） */
   function openMasterConfig() {
+    if (!verifyAdminPassword()) return;
+
     const inputsContainer = document.getElementById('master-inputs');
     const days = ['月', '火', '水', '木', '金', '土'];
     
@@ -835,8 +852,10 @@
     alert('固定パターンを更新しました！');
   }
 
-  /* データ管理・バックアップ機能 */
+  /* データ管理・バックアップ機能（要パスワード） */
   function openDataModal() {
+    if (!verifyAdminPassword()) return;
+
     document.getElementById('data-modal').style.display = 'flex';
   }
 
