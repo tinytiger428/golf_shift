@@ -43,7 +43,7 @@
       padding-bottom: 90px;
     }
 
-    /* ログイン認証画面オーバーレイ */
+    /* ログイン画面オーバーレイ */
     .login-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -123,6 +123,7 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .btn-header {
@@ -134,6 +135,16 @@
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .btn-header-badge {
+      background: var(--accent-gold);
+      color: #000;
+      border-radius: 10px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 3px;
     }
 
     .btn-logout {
@@ -300,6 +311,7 @@
 
     .tag-transfer { background: var(--warning-bg); color: #7a5200; }
     .tag-free { background: var(--primary-light); color: var(--primary); }
+    .tag-special { background: #e0f2fe; color: #0369a1; }
 
     .action-group {
       display: flex;
@@ -381,7 +393,7 @@
       border-radius: 12px;
       padding: 20px;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
       max-height: 85vh;
       overflow-y: auto;
       border-top: 5px solid var(--primary);
@@ -406,7 +418,7 @@
       font-weight: 600;
     }
 
-    .form-group input {
+    .form-group input, .form-group textarea, .form-group select {
       width: 100%;
       padding: 10px;
       border: 1px solid var(--border);
@@ -443,6 +455,36 @@
     .btn-danger-outline:hover {
       background: var(--danger-bg);
     }
+
+    /* 申請カードスタイル */
+    .request-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+
+    .request-type-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .req-absent { background: var(--danger-bg); color: var(--danger); }
+    .req-special { background: #e0f2fe; color: #0369a1; }
+
+    .request-reason {
+      font-size: 12px;
+      background: #fff;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      margin: 6px 0;
+    }
   </style>
 </head>
 <body>
@@ -477,8 +519,11 @@
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
   <div class="header-btns">
-    <button class="btn-header" onclick="openMasterConfig()">🔒 固定設定</button>
-    <button class="btn-header" onclick="openDataModal()">🔒 データ管理</button>
+    <button class="btn-header" id="btn-requests-manage" onclick="openRequestsModal()" style="display:none;">
+      📩 申請管理<span class="btn-header-badge" id="request-badge">0</span>
+    </button>
+    <button class="btn-header" id="btn-master-config" onclick="openMasterConfig()" style="display:none;">🔒 固定設定</button>
+    <button class="btn-header" id="btn-data-modal" onclick="openDataModal()" style="display:none;">🔒 データ管理</button>
     <button class="btn-header btn-logout" onclick="handleLogout()">ログアウト</button>
   </div>
 </header>
@@ -502,6 +547,50 @@
   <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由練習を追加</button>
 </div>
 
+<!-- 申請モーダル（一般ユーザー用） -->
+<div class="modal" id="special-request-modal">
+  <div class="modal-content">
+    <div class="modal-title" id="special-req-title">管理者への特例申請</div>
+    
+    <div class="form-group">
+      <label>申請種別</label>
+      <select id="req-type" onchange="toggleReqTypeUI()">
+        <option value="absent">特例欠席（Shiftから外す）</option>
+        <option value="special_transfer">特別振替（回数消費なし）</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="group-target-date" style="display:none;">
+      <label>振替希望日</label>
+      <input type="date" id="req-target-date">
+    </div>
+
+    <div class="form-group">
+      <label>申請理由（体調不良、公式行事など）</label>
+      <textarea id="req-reason" rows="3" placeholder="理由を入力してください"></textarea>
+    </div>
+
+    <input type="hidden" id="req-member-name">
+    <input type="hidden" id="req-member-index">
+
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('special-request-modal')">キャンセル</button>
+      <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="submitSpecialRequest()">送信する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 申請一覧・承認モーダル（管理者用） -->
+<div class="modal" id="requests-modal">
+  <div class="modal-content">
+    <div class="modal-title">届いている特例申請</div>
+    <div id="requests-list"></div>
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('requests-modal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- 固定パターン設定モーダル -->
 <div class="modal" id="master-modal">
   <div class="modal-content">
@@ -515,7 +604,7 @@
   </div>
 </div>
 
-<!-- 振替先選択モーダル -->
+<!-- 通常振替選択モーダル -->
 <div class="modal" id="reschedule-modal">
   <div class="modal-content">
     <div class="modal-title" id="reschedule-modal-title">振替先の選択</div>
@@ -560,11 +649,9 @@
 </div>
 
 <script>
-  // 認証設定アカウント（必要に応じて書き換えてください）
+  // 認証設定アカウント
   const ACCOUNTS = {
-    // 一般ユーザー用アカウント
     'user': { pass: '1234', role: 'user' },
-    // 管理者アカウント
     'admin': { pass: '0000', role: 'admin' }
   };
 
@@ -586,27 +673,17 @@
   let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
   let customShifts = {}; 
   let userDayRescheduleCounts = {};
-  let currentUserRole = null; // 'user' または 'admin'
+  let pendingRequests = JSON.parse(localStorage.getItem('pendingRequests')) || [];
+  let currentUserRole = null;
 
-  // データ読み込み処理
   try {
     const rawShifts = localStorage.getItem('customShifts');
     if (rawShifts) {
-      const parsed = JSON.parse(rawShifts);
-      let isOldFormat = false;
-      for (let key in parsed) {
-        if (Array.isArray(parsed[key]) && parsed[key].length > 0 && typeof parsed[key][0] === 'string') {
-          isOldFormat = true;
-          break;
-        }
-      }
-      if (!isOldFormat) {
-        customShifts = parsed;
-      }
+      customShifts = JSON.parse(rawShifts);
     }
     userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
   } catch (e) {
-    console.error("Data load error, reset to default", e);
+    console.error("Data load error", e);
   }
 
   let currentMonday = getMonday(new Date());
@@ -626,6 +703,7 @@
       
       document.getElementById('login-overlay').style.display = 'none';
       errorDiv.style.display = 'none';
+      updateRoleUI();
       render();
     } else {
       errorDiv.style.display = 'block';
@@ -650,10 +728,18 @@
     if (isLoggedIn === 'true') {
       currentUserRole = sessionStorage.getItem('userRole');
       document.getElementById('login-overlay').style.display = 'none';
+      updateRoleUI();
       render();
     } else {
       document.getElementById('login-overlay').style.display = 'flex';
     }
+  }
+
+  function updateRoleUI() {
+    const isAdmin = currentUserRole === 'admin';
+    document.getElementById('btn-requests-manage').style.display = isAdmin ? 'inline-block' : 'none';
+    document.getElementById('btn-master-config').style.display = isAdmin ? 'inline-block' : 'none';
+    document.getElementById('btn-data-modal').style.display = isAdmin ? 'inline-block' : 'none';
   }
 
   function getMonday(d) {
@@ -713,6 +799,7 @@
     localStorage.setItem('masterConfig', JSON.stringify(masterConfig));
     localStorage.setItem('customShifts', JSON.stringify(customShifts));
     localStorage.setItem('userDayRescheduleCounts', JSON.stringify(userDayRescheduleCounts));
+    localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
     render();
   }
 
@@ -748,6 +835,9 @@
     const count = members.length;
     const currentDayName = getDayName(selectedDateStr);
 
+    // バッジ件数更新
+    document.getElementById('request-badge').textContent = pendingRequests.length;
+
     const statusBox = document.getElementById('status-container');
     if (count < MIN_STAFF) {
       statusBox.innerHTML = `
@@ -782,15 +872,20 @@
         typeTag = `<span class="tag-type tag-transfer">振替枠 (${item.originDate}から)</span>`;
       } else if (item.type === 'free') {
         typeTag = `<span class="tag-type tag-free">自由練習</span>`;
+      } else if (item.type === 'special_transfer') {
+        typeTag = `<span class="tag-type tag-special">特別振替枠</span>`;
       }
 
       let actions = '';
       if (item.type === 'free') {
         actions = `<button class="btn-action btn-cancel" onclick="removeFreeShift(${index})">削除</button>`;
-      } else if (item.type === 'transfer') {
-        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', ${index})">振替取消</button>`;
+      } else if (item.type === 'transfer' || item.type === 'special_transfer') {
+        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', ${index}, '${item.type}')">振替取消</button>`;
       } else {
-        actions = `<button class="btn-action" onclick="openRescheduleModal('${item.name}', ${index})">振替</button>`;
+        actions = `
+          <button class="btn-action" onclick="openRescheduleModal('${item.name}', ${index})">振替</button>
+          <button class="btn-action" style="border-color:#52796f; color:#52796f;" onclick="openSpecialRequestModal('${item.name}', ${index})">特例申請</button>
+        `;
       }
 
       return `
@@ -850,17 +945,151 @@
     }
   }
 
-  /* 振替モーダルの開閉と実行 */
+  /* 特例申請機能 */
+  function openSpecialRequestModal(name, index) {
+    document.getElementById('special-req-title').textContent = `【特例申請】${name}さん (${selectedDateStr})`;
+    document.getElementById('req-member-name').value = name;
+    document.getElementById('req-member-index').value = index;
+    document.getElementById('req-type').value = 'absent';
+    document.getElementById('req-reason').value = '';
+    document.getElementById('req-target-date').value = selectedDateStr;
+    toggleReqTypeUI();
+    document.getElementById('special-request-modal').style.display = 'flex';
+  }
+
+  function toggleReqTypeUI() {
+    const type = document.getElementById('req-type').value;
+    document.getElementById('group-target-date').style.display = (type === 'special_transfer') ? 'block' : 'none';
+  }
+
+  function submitSpecialRequest() {
+    const name = document.getElementById('req-member-name').value;
+    const index = parseInt(document.getElementById('req-member-index').value, 10);
+    const type = document.getElementById('req-type').value;
+    const reason = document.getElementById('req-reason').value.trim();
+    const targetDate = document.getElementById('req-target-date').value;
+
+    if (!reason) {
+      alert('理由を入力してください。');
+      return;
+    }
+
+    if (type === 'special_transfer' && (!targetDate || targetDate === selectedDateStr)) {
+      alert('振替先の別の日付を正しく選択してください。');
+      return;
+    }
+
+    const newReq = {
+      id: Date.now(),
+      name: name,
+      originalDate: selectedDateStr,
+      index: index,
+      type: type,
+      reason: reason,
+      targetDate: targetDate,
+      createdAt: new Date().toLocaleString('ja-JP')
+    };
+
+    pendingRequests.push(newReq);
+    saveStorage();
+    closeModal('special-request-modal');
+    alert('管理者に申請を送信しました。承認されるまでしばらくお待ちください。');
+  }
+
+  /* 申請承認・管理 */
+  function openRequestsModal() {
+    const listDiv = document.getElementById('requests-list');
+    if (pendingRequests.length === 0) {
+      listDiv.innerHTML = '<p style="font-size:13px; color:var(--text-sub); text-align:center; padding: 20px 0;">届いている特例申請はありません。</p>';
+    } else {
+      listDiv.innerHTML = pendingRequests.map(req => {
+        const isAbsent = req.type === 'absent';
+        const typeBadge = isAbsent 
+          ? '<span class="request-type-badge req-absent">特例欠席</span>' 
+          : '<span class="request-type-badge req-special">特別振替 (回数なし)</span>';
+
+        return `
+          <div class="request-card">
+            <div>${typeBadge} <strong style="font-size:14px;">${req.name}</strong></div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">
+              対象日: ${req.originalDate} ${!isAbsent ? ` ➔ 振替希望: ${req.targetDate}` : ''}
+            </div>
+            <div class="request-reason">理由: ${req.reason}</div>
+            <div style="font-size:10px; color:#999; margin-bottom:8px;">申請日時: ${req.createdAt}</div>
+            <div style="display:flex; gap:6px; justify-content:flex-end;">
+              <button class="btn-action btn-cancel" onclick="rejectRequest(${req.id})">却下</button>
+              <button class="btn-main" style="padding: 6px 12px; font-size:12px; flex:initial;" onclick="approveRequest(${req.id})">承認して実行</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    document.getElementById('requests-modal').style.display = 'flex';
+  }
+
+  function approveRequest(reqId) {
+    const reqIndex = pendingRequests.findIndex(r => r.id === reqId);
+    if (reqIndex === -1) return;
+    const req = pendingRequests[reqIndex];
+
+    const currentMembers = getShiftObjectsForDate(req.originalDate);
+    const targetIdx = currentMembers.findIndex(m => m.name === req.name);
+
+    if (req.type === 'absent') {
+      // 欠席（リストから削る）
+      if (targetIdx !== -1) {
+        currentMembers.splice(targetIdx, 1);
+        customShifts[req.originalDate] = currentMembers;
+      }
+      alert(`${req.name}さんの ${req.originalDate} の特例欠席を承認し、シフトから外しました。`);
+    } else if (req.type === 'special_transfer') {
+      // 回数なしの特別振替
+      const targetMembers = getShiftObjectsForDate(req.targetDate);
+      if (targetMembers.length >= MAX_STAFF) {
+        alert(`${req.targetDate} は満員のため特別振替を実行できません。`);
+        return;
+      }
+
+      if (targetIdx !== -1) {
+        currentMembers.splice(targetIdx, 1);
+      }
+
+      targetMembers.push({
+        name: req.name,
+        originDate: req.originalDate,
+        type: 'special_transfer'
+      });
+
+      customShifts[req.originalDate] = currentMembers;
+      customShifts[req.targetDate] = targetMembers;
+
+      alert(`${req.name}さんの特別振替（${req.originalDate} ➔ ${req.targetDate}）を承認しました。※振替回数は消費されません。`);
+    }
+
+    pendingRequests.splice(reqIndex, 1);
+    saveStorage();
+    openRequestsModal(); // モーダル再描写
+  }
+
+  function rejectRequest(reqId) {
+    if (confirm('この申請を却下しますか？')) {
+      pendingRequests = pendingRequests.filter(r => r.id !== reqId);
+      saveStorage();
+      openRequestsModal();
+    }
+  }
+
+  /* 通常振替 */
   function openRescheduleModal(memberName, index) {
     const currentDayName = getDayName(selectedDateStr);
     const used = getRescheduleUsed(memberName, currentDayName);
 
     if (used >= MAX_RESCHEDULE_PER_DAY) {
-      alert(`${memberName}さんの【${currentDayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しているため、振替できません。`);
+      alert(`${memberName}さんの【${currentDayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。\n上限を超える場合は「特例申請」ボタンから管理者に申請してください。`);
       return;
     }
 
-    document.getElementById('reschedule-modal-title').textContent = `【振替申請】${memberName}さん`;
+    document.getElementById('reschedule-modal-title').textContent = `【通常振替】${memberName}さん`;
     document.getElementById('reschedule-member-name').value = memberName;
     document.getElementById('reschedule-member-index').value = index;
     document.getElementById('reschedule-date-input').value = selectedDateStr;
@@ -872,13 +1101,8 @@
     const index = parseInt(document.getElementById('reschedule-member-index').value, 10);
     const targetDateStr = document.getElementById('reschedule-date-input').value;
 
-    if (!targetDateStr) {
-      alert('振替先の日付を選択してください。');
-      return;
-    }
-
-    if (targetDateStr === selectedDateStr) {
-      alert('現在と同じ日付が選択されています。別の日付を選択してください。');
+    if (!targetDateStr || targetDateStr === selectedDateStr) {
+      alert('別の日付を正しく選択してください。');
       return;
     }
 
@@ -896,11 +1120,9 @@
     const currentDayName = getDayName(selectedDateStr);
     const used = getRescheduleUsed(memberName, currentDayName);
 
-    // 元の日付から削除
     const currentMembers = getShiftObjectsForDate(selectedDateStr);
     currentMembers.splice(index, 1);
 
-    // 振替先へ追加
     targetMembers.push({
       name: memberName,
       originDate: selectedDateStr,
@@ -910,7 +1132,6 @@
     customShifts[selectedDateStr] = currentMembers;
     customShifts[targetDateStr] = targetMembers;
 
-    // カウント消費
     updateRescheduleCount(memberName, currentDayName, 1);
 
     saveStorage();
@@ -918,10 +1139,10 @@
     alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
   }
 
-  function cancelReschedule(memberName, originDateStr, index) {
+  function cancelReschedule(memberName, originDateStr, index, type) {
     const originDayName = getDayName(originDateStr);
 
-    if (confirm(`${memberName}さんの ${originDateStr} からの振替を取り消し、元に戻しますか？\n（消費した振替回数は1回戻ります）`)) {
+    if (confirm(`${memberName}さんの振替を取り消し、元に戻しますか？`)) {
       const currentMembers = getShiftObjectsForDate(selectedDateStr);
       currentMembers.splice(index, 1);
 
@@ -935,7 +1156,9 @@
       customShifts[selectedDateStr] = currentMembers;
       customShifts[originDateStr] = originMembers;
 
-      updateRescheduleCount(memberName, originDayName, -1);
+      if (type !== 'special_transfer') {
+        updateRescheduleCount(memberName, originDayName, -1);
+      }
 
       saveStorage();
       alert(`${memberName}さんの振替を取り消し、${originDateStr} の枠に戻しました。`);
@@ -944,10 +1167,7 @@
 
   /* 固定メンバー設定 */
   function openMasterConfig() {
-    if (currentUserRole !== 'admin') {
-      alert('固定設定の変更には管理者権限（admin）が必要です。');
-      return;
-    }
+    if (currentUserRole !== 'admin') return;
 
     const inputsContainer = document.getElementById('master-inputs');
     const days = ['月', '火', '水', '木', '金', '土'];
@@ -976,11 +1196,7 @@
 
   /* データ管理機能 */
   function openDataModal() {
-    if (currentUserRole !== 'admin') {
-      alert('データ管理には管理者権限（admin）が必要です。');
-      return;
-    }
-
+    if (currentUserRole !== 'admin') return;
     document.getElementById('data-modal').style.display = 'flex';
   }
 
@@ -989,6 +1205,7 @@
       masterConfig: masterConfig,
       customShifts: customShifts,
       userDayRescheduleCounts: userDayRescheduleCounts,
+      pendingRequests: pendingRequests,
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -1012,6 +1229,7 @@
           masterConfig = data.masterConfig;
           customShifts = data.customShifts;
           userDayRescheduleCounts = data.userDayRescheduleCounts;
+          pendingRequests = data.pendingRequests || [];
           saveStorage();
           closeModal('data-modal');
           alert('データを正常に復元しました。');
@@ -1026,7 +1244,7 @@
   }
 
   function resetRescheduleCounts() {
-    if (confirm('すべてのメンバーの「振替回数カウント」を初期化（0回に戻す）しますか？\n（※日程のシフト状態は維持されます）')) {
+    if (confirm('すべてのメンバーの「振替回数カウント」を初期化（0回に戻す）しますか？')) {
       userDayRescheduleCounts = {};
       saveStorage();
       closeModal('data-modal');
@@ -1035,11 +1253,12 @@
   }
 
   function resetAllData() {
-    if (confirm('【注意】すべてのデータを削除して初期状態に戻しますか？\nこの操作は取り消せません。')) {
+    if (confirm('【注意】すべてのデータを削除して初期状態に戻しますか？')) {
       localStorage.clear();
       masterConfig = defaultMaster;
       customShifts = {};
       userDayRescheduleCounts = {};
+      pendingRequests = [];
       saveStorage();
       closeModal('data-modal');
       alert('すべてのデータを初期化しました。');
@@ -1055,7 +1274,6 @@
     navigator.serviceWorker.register('sw.js');
   }
 
-  // 初期読み込み時の認証チェック
   checkAuth();
 </script>
 </body>
