@@ -224,6 +224,7 @@ async function handleLogin(e) {
     await signInWithEmailAndPassword(auth, `${id}@${LOGIN_EMAIL_DOMAIN}`, pass);
     errorDiv.style.display = 'none';
   } catch (err) {
+    console.error('LOGIN ERROR:', err.code, err.message);
     errorDiv.style.display = 'block';
   }
 }
