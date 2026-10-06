@@ -1,12 +1,13 @@
-'use strict';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, setDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { firebaseConfig, LOGIN_EMAIL_DOMAIN } from './firebase-config.js';
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 /* ============ 設定 ============ */
-// ※注意：この認証はフロントのみで完結しており、セキュリティ上は"気休め"です。
-//   本格運用ではバックエンド(Firebase Auth等)に移行してください。
-const ACCOUNTS = {
-  'user': { pass: '1234', role: 'user' },
-  'admin': { pass: '0000', role: 'admin' }
-};
 
 const MIN_STAFF = 6;
 const MAX_STAFF = 14;
@@ -58,18 +59,17 @@ function sanitizeMaster(m) {
 }
 
 /* ============ 状態 ============ */
-let masterConfig = sanitizeMaster(loadJSON('masterConfig', clone(defaultMaster)));
-let userDayRescheduleCounts = loadJSON('userDayRescheduleCounts', {});
-let pendingRequests = loadJSON('pendingRequests', []);
+let masterConfig = clone(defaultMaster);
+let userDayRescheduleCounts = {};
+let pendingRequests = [];
 let currentUserRole = null;
 
-// シフトは「固定メンバーとの差分」だけを保存する
+// シフトは「固定メンバーとの差分」だけを保存する（Firestore: shifts/{日付}）
 // overrides[日付] = { removed: [固定メンバー名...], added: [{name, originDate, type}...] }
-// → 固定メンバー設定を変更しても、未来の日付に正しく反映される
-let overrides = loadJSON('shiftOverrides', null);
-if (!overrides) {
-  overrides = migrateLegacy(loadJSON('customShifts', {}));
-}
+let overrides = {};
+
+// 未保存の変更（saveStorage でまとめて Firestore に書き込む）
+const dirty = { dates: new Set(), days: new Set(), reqs: new Set(), master: false };
 
 function migrateLegacy(legacy) {
   const out = {};
@@ -120,6 +120,7 @@ function getWeekDays(monday) {
 
 /* ============ シフト操作（差分ベース） ============ */
 function getOv(date) {
+  dirty.dates.add(date);
   if (!overrides[date]) overrides[date] = { removed: [], added: [] };
   return overrides[date];
 }
@@ -168,19 +169,29 @@ function getRescheduleUsed(name, dayName) {
 
 function updateRescheduleCount(name, dayName, delta) {
   const key = `${dayName}_${name}`;
+  dirty.days.add(dayName);
   userDayRescheduleCounts[key] = Math.max(0, (userDayRescheduleCounts[key] || 0) + delta);
 }
 
 /* ============ 保存 ============ */
-function saveStorage() {
+async function saveStorage() {
   try {
-    localStorage.setItem('masterConfig', JSON.stringify(masterConfig));
-    localStorage.setItem('shiftOverrides', JSON.stringify(overrides));
-    localStorage.setItem('userDayRescheduleCounts', JSON.stringify(userDayRescheduleCounts));
-    localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+    const batch = writeBatch(db);
+    dirty.dates.forEach(d => batch.set(doc(db, 'shifts', d), overrides[d] || { removed: [], added: [] }));
+    dirty.days.forEach(day => {
+      const c = {};
+      Object.entries(userDayRescheduleCounts).forEach(([k, v]) => {
+        if (k.startsWith(day + '_')) c[k.slice(day.length + 1)] = v;
+      });
+      batch.set(doc(db, 'counts', day), { c });
+    });
+    dirty.reqs.forEach(id => batch.delete(doc(db, 'requests', String(id))));
+    if (dirty.master) batch.set(doc(db, 'config', 'master'), masterConfig);
+    dirty.dates.clear(); dirty.days.clear(); dirty.reqs.clear(); dirty.master = false;
+    await batch.commit();
   } catch (e) {
-    alert('データの保存に失敗しました。ブラウザの容量や設定を確認してください。');
     console.error(e);
+    alert('保存に失敗しました。通信状況や権限を確認し、画面を再読み込みしてください。');
   }
   render();
 }
@@ -204,49 +215,89 @@ document.addEventListener('click', () => {
   if (menu) menu.classList.remove('show');
 });
 
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
-  const id = document.getElementById('login-id').value.trim();
+  const id = document.getElementById('login-id').value.trim().toLowerCase();
   const pass = document.getElementById('login-pass').value;
   const errorDiv = document.getElementById('login-error');
-
-  const acc = Object.prototype.hasOwnProperty.call(ACCOUNTS, id) ? ACCOUNTS[id] : null;
-  if (acc && acc.pass === pass) {
-    currentUserRole = acc.role;
-    sessionStorage.setItem('isLoggedIn', 'true');
-    sessionStorage.setItem('userRole', currentUserRole);
-    document.getElementById('login-overlay').style.display = 'none';
+  try {
+    await signInWithEmailAndPassword(auth, `${id}@${LOGIN_EMAIL_DOMAIN}`, pass);
     errorDiv.style.display = 'none';
-    updateRoleUI();
-    render();
-  } else {
+  } catch (err) {
     errorDiv.style.display = 'block';
   }
 }
 
 function handleLogout() {
   if (confirm('ログアウトしますか？')) {
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('userRole');
-    currentUserRole = null;
-    document.getElementById('login-id').value = '';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-overlay').style.display = 'flex';
     document.getElementById('dropdown-menu').classList.remove('show');
+    signOut(auth);
   }
 }
 
-function checkAuth() {
-  if (sessionStorage.getItem('isLoggedIn') === 'true') {
-    const role = sessionStorage.getItem('userRole');
-    currentUserRole = role === 'admin' ? 'admin' : 'user';
-    document.getElementById('login-overlay').style.display = 'none';
-    updateRoleUI();
+/* ---- Firestore リアルタイム同期 ---- */
+let unsubs = [];
+function stopListeners() { unsubs.forEach(u => u()); unsubs = []; }
+
+function startListeners(isAdmin) {
+  stopListeners();
+  const onErr = e => { console.error(e); alert('データの同期に失敗しました。権限設定を確認してください。'); };
+
+  unsubs.push(onSnapshot(collection(db, 'shifts'), snap => {
+    overrides = {};
+    snap.forEach(d => {
+      const v = d.data();
+      overrides[d.id] = { removed: v.removed || [], added: v.added || [] };
+    });
     render();
-  } else {
-    document.getElementById('login-overlay').style.display = 'flex';
+  }, onErr));
+
+  unsubs.push(onSnapshot(collection(db, 'counts'), snap => {
+    userDayRescheduleCounts = {};
+    snap.forEach(d => {
+      Object.entries(d.data().c || {}).forEach(([name, n]) => {
+        userDayRescheduleCounts[`${d.id}_${name}`] = n;
+      });
+    });
+    render();
+  }, onErr));
+
+  unsubs.push(onSnapshot(doc(db, 'config', 'master'), snap => {
+    if (snap.exists()) {
+      masterConfig = sanitizeMaster(snap.data());
+    } else if (isAdmin) {
+      setDoc(doc(db, 'config', 'master'), defaultMaster); // 初回だけ初期値を書き込む
+    }
+    render();
+  }, onErr));
+
+  if (isAdmin) { // 申請（理由を含む）は管理者だけが読める
+    unsubs.push(onSnapshot(collection(db, 'requests'), snap => {
+      pendingRequests = snap.docs.map(d => d.data()).sort((a, b) => a.id - b.id);
+      render();
+    }, onErr));
   }
 }
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    currentUserRole = null;
+    stopListeners();
+    pendingRequests = [];
+    document.getElementById('login-id').value = '';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-overlay').style.display = 'flex';
+    return;
+  }
+  let isAdmin = false;
+  try { isAdmin = (await getDoc(doc(db, 'admins', user.uid))).exists(); } catch (e) { /* 一般ユーザー扱い */ }
+  currentUserRole = isAdmin ? 'admin' : 'user';
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('login-pass').value = '';
+  updateRoleUI();
+  startListeners(isAdmin);
+  render();
+});
 
 function updateRoleUI() {
   const isAdmin = currentUserRole === 'admin';
@@ -436,7 +487,7 @@ function submitSpecialRequest() {
     return;
   }
 
-  pendingRequests.push({
+  const reqObj = {
     id: Date.now(),
     name,
     originalDate: selectedDateStr,
@@ -444,9 +495,10 @@ function submitSpecialRequest() {
     reason,
     targetDate: type === 'special_transfer' ? targetDate : '',
     createdAt: new Date().toLocaleString('ja-JP')
-  });
+  };
+  setDoc(doc(db, 'requests', String(reqObj.id)), reqObj)
+    .catch(() => alert('申請の送信に失敗しました。もう一度お試しください。'));
   closeModal('special-request-modal');
-  saveStorage();
   alert('管理者に申請を送信しました。承認されるまでしばらくお待ちください。');
 }
 
@@ -494,6 +546,7 @@ function approveRequest(reqId) {
 
   if (!item) {
     alert(`${req.name}さんは ${req.originalDate} のシフトに存在しないため、この申請は処理できません。申請を削除します。`);
+    dirty.reqs.add(req.id);
     pendingRequests.splice(reqIndex, 1);
     saveStorage();
     openRequestsModal();
@@ -512,7 +565,8 @@ function approveRequest(reqId) {
     alert(`${req.name}さんの特別振替（${req.originalDate} ➔ ${req.targetDate}）を承認しました。※振替回数は消費されません。`);
   }
 
-  pendingRequests.splice(reqIndex, 1);
+  dirty.reqs.add(req.id);
+    pendingRequests.splice(reqIndex, 1);
   saveStorage();
   openRequestsModal();
 }
@@ -520,6 +574,7 @@ function approveRequest(reqId) {
 function rejectRequest(reqId) {
   if (!requireAdmin()) return;
   if (confirm('この申請を却下しますか？')) {
+    dirty.reqs.add(reqId);
     pendingRequests = pendingRequests.filter(r => r.id !== reqId);
     saveStorage();
     openRequestsModal();
@@ -614,6 +669,7 @@ function saveMasterConfig() {
     const raw = document.getElementById(`master-${d}`).value.split(/[,、，]/);
     masterConfig[d] = [...new Set(raw.map(normName).filter(Boolean))];
   });
+  dirty.master = true;
   closeModal('master-modal');
   saveStorage();
   alert('固定パターンを更新しました！\n（振替・欠席などの個別変更は維持されます）');
@@ -659,9 +715,9 @@ function importData(event) {
         alert('無効なバックアップファイルフォーマットです。');
         return;
       }
+      Object.keys(overrides).forEach(d => dirty.dates.add(d));
       masterConfig = sanitizeMaster(data.masterConfig);
       userDayRescheduleCounts = data.userDayRescheduleCounts || {};
-      pendingRequests = Array.isArray(data.pendingRequests) ? data.pendingRequests : [];
       // 新形式(v2)・旧形式(customShifts)どちらも読み込める
       if (data.shiftOverrides && typeof data.shiftOverrides === 'object') {
         overrides = data.shiftOverrides;
@@ -670,9 +726,12 @@ function importData(event) {
       } else {
         overrides = {};
       }
+      Object.keys(overrides).forEach(d => dirty.dates.add(d));
+      WEEKDAYS.forEach(d => dirty.days.add(d));
+      dirty.master = true;
       closeModal('data-modal');
       saveStorage();
-      alert('データを正常に復元しました。');
+      alert('データを正常に復元しました。（申請データは復元されません）');
     } catch (err) {
       alert('ファイルの読み込みに失敗しました。');
     } finally {
@@ -686,6 +745,7 @@ function resetRescheduleCounts() {
   if (!requireAdmin()) return;
   if (confirm('すべてのメンバーの「振替回数カウント」を初期化（0回に戻す）しますか？')) {
     userDayRescheduleCounts = {};
+    WEEKDAYS.forEach(d => dirty.days.add(d));
     closeModal('data-modal');
     saveStorage();
     alert('振替回数を初期化しました。');
@@ -695,8 +755,10 @@ function resetRescheduleCounts() {
 function resetAllData() {
   if (!requireAdmin()) return;
   if (confirm('【注意】すべてのデータを削除して初期状態に戻しますか？')) {
-    ['masterConfig', 'customShifts', 'shiftOverrides', 'userDayRescheduleCounts', 'pendingRequests']
-      .forEach(k => localStorage.removeItem(k));
+    Object.keys(overrides).forEach(d => dirty.dates.add(d));
+    pendingRequests.forEach(r => dirty.reqs.add(r.id));
+    WEEKDAYS.forEach(d => dirty.days.add(d));
+    dirty.master = true;
     masterConfig = clone(defaultMaster);
     overrides = {};
     userDayRescheduleCounts = {};
@@ -740,4 +802,9 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed', err));
 }
 
-checkAuth();
+// type="module" ではHTMLのonclickから関数が見えないので、windowに公開する
+Object.assign(window, {
+  handleLogin, handleLogout, toggleDropdownMenu, openRequestsModal, openMasterConfig,
+  openDataModal, changeWeek, addFreeShift, toggleReqTypeUI, closeModal, submitSpecialRequest,
+  saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData
+});
