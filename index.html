@@ -2,20 +2,19 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#006241">
   <title>オークラ振替連絡</title>
-  
+
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
 
   <style>
     :root {
-      /* 青学カラー（Aoyama Gakuin Colors） */
-      --primary: #006241;       /* 青学グリーン */
-      --primary-dark: #004830;  /* 濃いグリーン */
-      --primary-light: #e6f2ed; /* 薄いグリーン背景 */
-      --accent-gold: #c5a059;   /* アクセントゴールド */
+      --primary: #006241;
+      --primary-dark: #004830;
+      --primary-light: #e6f2ed;
+      --accent-gold: #c5a059;
       --bg: #f4f7f5;
       --card-bg: #ffffff;
       --border: #d1e0d8;
@@ -43,7 +42,6 @@
       padding-bottom: 90px;
     }
 
-    /* ログイン画面オーバーレイ */
     .login-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -65,22 +63,9 @@
       border-top: 6px solid var(--primary);
     }
 
-    .login-header {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .login-header h2 {
-      color: var(--primary-dark);
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    .login-header p {
-      font-size: 12px;
-      color: var(--text-sub);
-      margin-top: 4px;
-    }
+    .login-header { text-align: center; margin-bottom: 24px; }
+    .login-header h2 { color: var(--primary-dark); font-size: 20px; font-weight: bold; }
+    .login-header p { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
 
     .login-error {
       color: var(--danger);
@@ -93,7 +78,6 @@
       text-align: center;
     }
 
-    /* ヘッダーエリア */
     header {
       position: sticky;
       top: 0;
@@ -108,21 +92,10 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
-    h1 {
-      font-size: 19px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
+    h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.5px; }
+    .sub-info { font-size: 11px; color: rgba(255, 255, 255, 0.85); margin-top: 2px; }
 
-    .sub-info {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.85);
-      margin-top: 2px;
-    }
-
-    .menu-container {
-      position: relative;
-    }
+    .menu-container { position: relative; }
 
     .menu-toggle-btn {
       background: rgba(255, 255, 255, 0.15);
@@ -137,10 +110,7 @@
       align-items: center;
       gap: 6px;
     }
-
-    .menu-toggle-btn:active {
-      background: rgba(255, 255, 255, 0.3);
-    }
+    .menu-toggle-btn:active { background: rgba(255, 255, 255, 0.3); }
 
     .menu-badge {
       background: var(--accent-gold);
@@ -151,7 +121,6 @@
       font-weight: bold;
     }
 
-    /* ドロップダウンメニュー */
     .dropdown-menu {
       position: absolute;
       top: 110%;
@@ -166,10 +135,7 @@
       flex-direction: column;
       z-index: 100;
     }
-
-    .dropdown-menu.show {
-      display: flex;
-    }
+    .dropdown-menu.show { display: flex; }
 
     .dropdown-item {
       padding: 12px 16px;
@@ -186,18 +152,9 @@
       border-bottom: 1px solid var(--border);
       width: 100%;
     }
-
-    .dropdown-item:last-child {
-      border-bottom: none;
-    }
-
-    .dropdown-item:active {
-      background-color: var(--primary-light);
-    }
-
-    .dropdown-item.logout-item {
-      color: var(--danger);
-    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:active { background-color: var(--primary-light); }
+    .dropdown-item.logout-item { color: var(--danger); }
 
     .btn-logout-only {
       background: rgba(217, 4, 41, 0.85);
@@ -210,7 +167,6 @@
       cursor: pointer;
     }
 
-    /* 週ナビゲーション */
     .week-nav {
       display: flex;
       justify-content: space-between;
@@ -231,13 +187,8 @@
       cursor: pointer;
     }
 
-    .current-month-title {
-      font-weight: bold;
-      font-size: 15px;
-      color: var(--primary-dark);
-    }
+    .current-month-title { font-weight: bold; font-size: 15px; color: var(--primary-dark); }
 
-    /* 日付タブナビゲーション */
     .day-tabs {
       display: flex;
       background: var(--card-bg);
@@ -255,13 +206,7 @@
       cursor: pointer;
       position: relative;
     }
-
-    .tab-item.active {
-      color: var(--primary);
-      font-weight: bold;
-      background: var(--primary-light);
-    }
-
+    .tab-item.active { color: var(--primary); font-weight: bold; background: var(--primary-light); }
     .tab-item.active::after {
       content: '';
       position: absolute;
@@ -272,22 +217,10 @@
       background: var(--accent-gold);
     }
 
-    .tab-date {
-      font-size: 16px;
-      font-weight: bold;
-      display: block;
-      margin-top: 2px;
-    }
+    .tab-date { font-size: 16px; font-weight: bold; display: block; margin-top: 2px; }
+    .badge { display: block; font-size: 10px; margin-top: 2px; }
 
-    .badge {
-      display: block;
-      font-size: 10px;
-      margin-top: 2px;
-    }
-
-    .container {
-      padding: 16px;
-    }
+    .container { padding: 16px; }
 
     .status-card {
       padding: 12px 14px;
@@ -296,39 +229,13 @@
       font-size: 13px;
       border-left: 5px solid;
     }
+    .status-card.danger { background-color: var(--danger-bg); color: var(--danger); border-left-color: var(--danger); }
+    .status-card.success { background-color: var(--success-bg); color: var(--primary-dark); border-left-color: var(--primary); }
+    .status-card.warning { background-color: var(--warning-bg); color: #7a5200; border-left-color: var(--warning); }
+    .status-title { font-weight: bold; }
+    .status-desc { font-size: 11px; margin-top: 2px; opacity: 0.9; }
 
-    .status-card.danger {
-      background-color: var(--danger-bg);
-      color: var(--danger);
-      border-left-color: var(--danger);
-    }
-    .status-card.success {
-      background-color: var(--success-bg);
-      color: var(--primary-dark);
-      border-left-color: var(--primary);
-    }
-    .status-card.warning {
-      background-color: var(--warning-bg);
-      color: #7a5200;
-      border-left-color: var(--warning);
-    }
-
-    .status-title {
-      font-weight: bold;
-    }
-
-    .status-desc {
-      font-size: 11px;
-      margin-top: 2px;
-      opacity: 0.9;
-    }
-
-    /* メンバーリスト */
-    .member-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .member-list { display: flex; flex-direction: column; gap: 10px; }
 
     .member-card {
       background: var(--card-bg);
@@ -341,22 +248,9 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
 
-    .member-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .member-name {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .member-sub {
-      font-size: 11px;
-      color: var(--text-sub);
-      margin-top: 2px;
-    }
+    .member-info { display: flex; flex-direction: column; }
+    .member-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .member-sub { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
 
     .tag-type {
       display: inline-block;
@@ -366,15 +260,11 @@
       font-weight: bold;
       margin-left: 6px;
     }
-
     .tag-transfer { background: var(--warning-bg); color: #7a5200; }
     .tag-free { background: var(--primary-light); color: var(--primary); }
     .tag-special { background: #e0f2fe; color: #0369a1; }
 
-    .action-group {
-      display: flex;
-      gap: 6px;
-    }
+    .action-group { display: flex; gap: 6px; }
 
     .btn-action {
       background: var(--card-bg);
@@ -386,19 +276,9 @@
       font-weight: 600;
       cursor: pointer;
     }
-
-    .btn-action:hover {
-      background: var(--primary-light);
-    }
-
-    .btn-cancel {
-      border-color: var(--danger);
-      color: var(--danger);
-    }
-
-    .btn-cancel:hover {
-      background: var(--danger-bg);
-    }
+    .btn-action:hover { background: var(--primary-light); }
+    .btn-cancel { border-color: var(--danger); color: var(--danger); }
+    .btn-cancel:hover { background: var(--danger-bg); }
 
     .bottom-bar {
       position: fixed;
@@ -427,14 +307,8 @@
       text-align: center;
       border-bottom: 2px solid var(--primary-dark);
     }
+    .btn-main:disabled { background: #a3b1a8; border-bottom: none; cursor: not-allowed; }
 
-    .btn-main:disabled {
-      background: #a3b1a8;
-      border-bottom: none;
-      cursor: not-allowed;
-    }
-
-    /* モーダル共通 */
     .modal {
       display: none;
       position: fixed;
@@ -457,25 +331,10 @@
       border-top: 5px solid var(--primary);
     }
 
-    .modal-title {
-      font-size: 16px;
-      font-weight: bold;
-      color: var(--primary-dark);
-      margin-bottom: 12px;
-    }
+    .modal-title { font-size: 16px; font-weight: bold; color: var(--primary-dark); margin-bottom: 12px; }
 
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      color: var(--text-sub);
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
-
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 4px; font-weight: 600; }
     .form-group input, .form-group textarea, .form-group select {
       width: 100%;
       padding: 10px;
@@ -484,18 +343,9 @@
       font-size: 14px;
     }
 
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 20px;
-    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
-    .data-section {
-      border-top: 1px solid var(--border);
-      padding-top: 12px;
-      margin-top: 12px;
-    }
+    .data-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
 
     .btn-danger-outline {
       border: 1px solid var(--danger);
@@ -509,10 +359,7 @@
       cursor: pointer;
       margin-top: 6px;
     }
-
-    .btn-danger-outline:hover {
-      background: var(--danger-bg);
-    }
+    .btn-danger-outline:hover { background: var(--danger-bg); }
 
     .request-card {
       border: 1px solid var(--border);
@@ -530,7 +377,6 @@
       font-weight: bold;
       margin-bottom: 6px;
     }
-
     .req-absent { background: var(--danger-bg); color: var(--danger); }
     .req-special { background: #e0f2fe; color: #0369a1; }
 
@@ -553,13 +399,13 @@
       <h2>オークラ振替連絡</h2>
       <p>ログインしてシフトシステムを開始します</p>
     </div>
-    
+
     <div class="login-error" id="login-error">IDまたはパスワードが正しくありません</div>
 
     <form onsubmit="handleLogin(event)">
       <div class="form-group">
         <label for="login-id">ログインID</label>
-        <input type="text" id="login-id" placeholder="IDを入力" required autocomplete="username">
+        <input type="text" id="login-id" placeholder="IDを入力" required autocomplete="username" autocapitalize="none">
       </div>
       <div class="form-group">
         <label for="login-pass">パスワード</label>
@@ -576,44 +422,36 @@
     <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
   </div>
 
-  <!-- 管理者用：メニューバー（☰ メニュー） -->
+  <!-- 管理者用メニュー -->
   <div class="menu-container" id="admin-menu-area" style="display:none;">
     <button class="menu-toggle-btn" onclick="toggleDropdownMenu(event)">
       <span>☰</span> メニュー
       <span class="menu-badge" id="menu-badge">0</span>
     </button>
-    
+
     <div class="dropdown-menu" id="dropdown-menu">
       <button class="dropdown-item" onclick="openRequestsModal()">
         📩 申請管理
         <span class="menu-badge" id="dropdown-req-badge">0</span>
       </button>
-      <button class="dropdown-item" onclick="openMasterConfig()">
-        🔒 固定設定
-      </button>
-      <button class="dropdown-item" onclick="openDataModal()">
-        🔒 データ管理
-      </button>
-      <button class="dropdown-item logout-item" onclick="handleLogout()">
-        🚪 ログアウト
-      </button>
+      <button class="dropdown-item" onclick="openMasterConfig()">🔒 固定設定</button>
+      <button class="dropdown-item" onclick="openDataModal()">🔒 データ管理</button>
+      <button class="dropdown-item logout-item" onclick="handleLogout()">🚪 ログアウト</button>
     </div>
   </div>
 
-  <!-- 一般ユーザー用：ログアウトボタンのみ -->
+  <!-- 一般ユーザー用 -->
   <div id="user-menu-area" style="display:none;">
     <button class="btn-logout-only" onclick="handleLogout()">ログアウト</button>
   </div>
 </header>
 
-<!-- 週切り替えナビ -->
 <div class="week-nav">
   <button class="nav-btn" onclick="changeWeek(-1)">＜ 前の週</button>
   <div class="current-month-title" id="week-title">----年--月</div>
   <button class="nav-btn" onclick="changeWeek(1)">次の週 ＞</button>
 </div>
 
-<!-- 日付タブ (月〜土) -->
 <div class="day-tabs" id="day-tabs"></div>
 
 <div class="container">
@@ -625,11 +463,11 @@
   <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由練習を追加</button>
 </div>
 
-<!-- 申請モーダル（一般ユーザー用） -->
+<!-- 特例申請モーダル -->
 <div class="modal" id="special-request-modal">
   <div class="modal-content">
     <div class="modal-title" id="special-req-title">管理者への特例申請</div>
-    
+
     <div class="form-group">
       <label>申請種別</label>
       <select id="req-type" onchange="toggleReqTypeUI()">
@@ -658,7 +496,7 @@
   </div>
 </div>
 
-<!-- 申請一覧・承認モーダル（管理者用） -->
+<!-- 申請一覧モーダル -->
 <div class="modal" id="requests-modal">
   <div class="modal-content">
     <div class="modal-title">届いている特例申請</div>
@@ -669,7 +507,7 @@
   </div>
 </div>
 
-<!-- 固定パターン設定モーダル -->
+<!-- 固定メンバー設定モーダル -->
 <div class="modal" id="master-modal">
   <div class="modal-content">
     <div class="modal-title">曜日ごとの固定メンバー設定</div>
@@ -682,7 +520,7 @@
   </div>
 </div>
 
-<!-- 通常振替選択モーダル -->
+<!-- 通常振替モーダル -->
 <div class="modal" id="reschedule-modal">
   <div class="modal-content">
     <div class="modal-title" id="reschedule-modal-title">振替先の選択</div>
@@ -699,11 +537,11 @@
   </div>
 </div>
 
-<!-- データ管理・バックアップモーダル -->
+<!-- データ管理モーダル -->
 <div class="modal" id="data-modal">
   <div class="modal-content">
     <div class="modal-title">データ管理・バックアップ</div>
-    
+
     <div class="form-group">
       <label>データバックアップ（JSON出力）</label>
       <button class="btn-action" style="width: 100%;" onclick="exportData()">バックアップファイルを保存</button>
@@ -726,650 +564,6 @@
   </div>
 </div>
 
-<script>
-  // 認証アカウント設定
-  const ACCOUNTS = {
-    'user': { pass: '1234', role: 'user' },
-    'admin': { pass: '0000', role: 'admin' }
-  };
-
-  const MIN_STAFF = 6;
-  const MAX_STAFF = 14;
-  const MAX_RESCHEDULE_PER_DAY = 5;
-
-  const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
-
-  const defaultMaster = {
-    '月': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
-    '火': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE'],
-    '水': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG'],
-    '木': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF'],
-    '金': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG', 'スタッフH'],
-    '土': ['スタッフA', 'スタッフB', 'スタッフC', 'スタッフD', 'スタッフE', 'スタッフF', 'スタッフG']
-  };
-
-  let masterConfig = JSON.parse(localStorage.getItem('masterConfig')) || defaultMaster;
-  let customShifts = {}; 
-  let userDayRescheduleCounts = {};
-  let pendingRequests = JSON.parse(localStorage.getItem('pendingRequests')) || [];
-  let currentUserRole = null;
-
-  try {
-    const rawShifts = localStorage.getItem('customShifts');
-    if (rawShifts) {
-      customShifts = JSON.parse(rawShifts);
-    }
-    userDayRescheduleCounts = JSON.parse(localStorage.getItem('userDayRescheduleCounts')) || {};
-  } catch (e) {
-    console.error("Data load error", e);
-  }
-
-  let currentMonday = getMonday(new Date());
-  let selectedDateStr = formatDate(currentMonday);
-
-  /* ドロップダウンメニュー制御 */
-  function toggleDropdownMenu(e) {
-    e.stopPropagation();
-    const menu = document.getElementById('dropdown-menu');
-    menu.classList.toggle('show');
-  }
-
-  document.addEventListener('click', () => {
-    const menu = document.getElementById('dropdown-menu');
-    if (menu) menu.classList.remove('show');
-  });
-
-  /* ログイン認証処理 */
-  function handleLogin(e) {
-    e.preventDefault();
-    const idInput = document.getElementById('login-id').value.trim();
-    const passInput = document.getElementById('login-pass').value;
-    const errorDiv = document.getElementById('login-error');
-
-    if (ACCOUNTS[idInput] && ACCOUNTS[idInput].pass === passInput) {
-      currentUserRole = ACCOUNTS[idInput].role;
-      sessionStorage.setItem('isLoggedIn', 'true');
-      sessionStorage.setItem('userRole', currentUserRole);
-      
-      document.getElementById('login-overlay').style.display = 'none';
-      errorDiv.style.display = 'none';
-      updateRoleUI();
-      render();
-    } else {
-      errorDiv.style.display = 'block';
-    }
-  }
-
-  /* ログアウト処理 */
-  function handleLogout() {
-    if (confirm('ログアウトしますか？')) {
-      sessionStorage.removeItem('isLoggedIn');
-      sessionStorage.removeItem('userRole');
-      currentUserRole = null;
-      document.getElementById('login-id').value = '';
-      document.getElementById('login-pass').value = '';
-      document.getElementById('login-overlay').style.display = 'flex';
-      document.getElementById('dropdown-menu').classList.remove('show');
-    }
-  }
-
-  /* 起動時ログインチェック */
-  function checkAuth() {
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn');
-    if (isLoggedIn === 'true') {
-      currentUserRole = sessionStorage.getItem('userRole');
-      document.getElementById('login-overlay').style.display = 'none';
-      updateRoleUI();
-      render();
-    } else {
-      document.getElementById('login-overlay').style.display = 'flex';
-    }
-  }
-
-  /* 役職ごとのUI切り替え（管理者：メニューバー / 一般：ログアウトのみ） */
-  function updateRoleUI() {
-    const isAdmin = currentUserRole === 'admin';
-    document.getElementById('admin-menu-area').style.display = isAdmin ? 'block' : 'none';
-    document.getElementById('user-menu-area').style.display = isAdmin ? 'none' : 'block';
-  }
-
-  function getMonday(d) {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(date.setDate(diff));
-  }
-
-  function formatDate(d) {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const date = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${date}`;
-  }
-
-  function getDayName(dateStr) {
-    const d = new Date(dateStr.replace(/-/g, '/'));
-    return WEEKDAYS[d.getDay()];
-  }
-
-  function getWeekDays(monday) {
-    const days = [];
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      days.push(d);
-    }
-    return days;
-  }
-
-  function getShiftObjectsForDate(dateStr) {
-    if (customShifts[dateStr]) {
-      return customShifts[dateStr];
-    }
-    const dayName = getDayName(dateStr);
-    const fixedMembers = masterConfig[dayName] || [];
-    return fixedMembers.map(name => ({
-      name: name,
-      originDate: dateStr,
-      type: 'fixed'
-    }));
-  }
-
-  function getRescheduleUsed(memberName, dayName) {
-    const key = `${dayName}_${memberName}`;
-    return userDayRescheduleCounts[key] || 0;
-  }
-
-  function updateRescheduleCount(memberName, dayName, delta) {
-    const key = `${dayName}_${memberName}`;
-    const current = userDayRescheduleCounts[key] || 0;
-    userDayRescheduleCounts[key] = Math.max(0, current + delta);
-  }
-
-  function saveStorage() {
-    localStorage.setItem('masterConfig', JSON.stringify(masterConfig));
-    localStorage.setItem('customShifts', JSON.stringify(customShifts));
-    localStorage.setItem('userDayRescheduleCounts', JSON.stringify(userDayRescheduleCounts));
-    localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
-    render();
-  }
-
-  function closeModal(id) {
-    document.getElementById(id).style.display = 'none';
-  }
-
-  function renderTabs() {
-    const weekDays = getWeekDays(currentMonday);
-    const tabsContainer = document.getElementById('day-tabs');
-
-    const firstDay = weekDays[0];
-    document.getElementById('week-title').textContent = `${firstDay.getFullYear()}年 ${firstDay.getMonth() + 1}月`;
-
-    tabsContainer.innerHTML = weekDays.map(d => {
-      const dateStr = formatDate(d);
-      const dayName = WEEKDAYS[d.getDay()];
-      const members = getShiftObjectsForDate(dateStr);
-      const isSelected = dateStr === selectedDateStr;
-
-      return `
-        <div class="tab-item ${isSelected ? 'active' : ''}" onclick="selectDate('${dateStr}')">
-          <div>${dayName}</div>
-          <span class="tab-date">${d.getDate()}</span>
-          <span class="badge">${members.length}人</span>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function renderContent() {
-    const members = getShiftObjectsForDate(selectedDateStr);
-    const count = members.length;
-    const currentDayName = getDayName(selectedDateStr);
-
-    // 申請バッジ表示更新
-    const reqCount = pendingRequests.length;
-    document.getElementById('menu-badge').textContent = reqCount;
-    document.getElementById('dropdown-req-badge').textContent = reqCount;
-
-    const statusBox = document.getElementById('status-container');
-    if (count < MIN_STAFF) {
-      statusBox.innerHTML = `
-        <div class="status-card danger">
-          <div class="status-title">⚠️ 人員不足 (${count}/${MIN_STAFF}名)</div>
-          <div class="status-desc">6名を下回っているため、代理を立てる必要があります。</div>
-        </div>
-      `;
-    } else if (count < MAX_STAFF) {
-      statusBox.innerHTML = `
-        <div class="status-card success">
-          <div class="status-title">〇 出勤OK (${count}名)</div>
-          <div class="status-desc">最大14名まで「自由練習」として参加可能です。</div>
-        </div>
-      `;
-    } else {
-      statusBox.innerHTML = `
-        <div class="status-card warning">
-          <div class="status-title">満員 (14/14名)</div>
-          <div class="status-desc">これ以上自由練習を追加できません。</div>
-        </div>
-      `;
-    }
-
-    const listContainer = document.getElementById('member-list');
-    listContainer.innerHTML = members.map((item, index) => {
-      const used = getRescheduleUsed(item.name, currentDayName);
-      const remaining = MAX_RESCHEDULE_PER_DAY - used;
-
-      let typeTag = '';
-      if (item.type === 'transfer') {
-        typeTag = `<span class="tag-type tag-transfer">振替枠 (${item.originDate}から)</span>`;
-      } else if (item.type === 'free') {
-        typeTag = `<span class="tag-type tag-free">自由練習</span>`;
-      } else if (item.type === 'special_transfer') {
-        typeTag = `<span class="tag-type tag-special">特別振替枠</span>`;
-      }
-
-      let actions = '';
-      if (item.type === 'free') {
-        actions = `<button class="btn-action btn-cancel" onclick="removeFreeShift(${index})">削除</button>`;
-      } else if (item.type === 'transfer' || item.type === 'special_transfer') {
-        actions = `<button class="btn-action btn-cancel" onclick="cancelReschedule('${item.name}', '${item.originDate}', ${index}, '${item.type}')">振替取消</button>`;
-      } else {
-        actions = `
-          <button class="btn-action" onclick="openRescheduleModal('${item.name}', ${index})">振替</button>
-          <button class="btn-action" style="border-color:#52796f; color:#52796f;" onclick="openSpecialRequestModal('${item.name}', ${index})">特例申請</button>
-        `;
-      }
-
-      return `
-        <div class="member-card">
-          <div class="member-info">
-            <div>
-              <span class="member-name">${item.name}</span>
-              ${typeTag}
-            </div>
-            <span class="member-sub">${currentDayName}曜枠 振替残: ${remaining} / ${MAX_RESCHEDULE_PER_DAY} 回</span>
-          </div>
-          <div class="action-group">
-            ${actions}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    document.getElementById('add-btn').disabled = count >= MAX_STAFF;
-  }
-
-  function selectDate(dateStr) {
-    selectedDateStr = dateStr;
-    render();
-  }
-
-  function changeWeek(direction) {
-    currentMonday.setDate(currentMonday.getDate() + (direction * 7));
-    const weekDays = getWeekDays(currentMonday);
-    selectedDateStr = formatDate(weekDays[0]);
-    render();
-  }
-
-  function addFreeShift() {
-    const members = getShiftObjectsForDate(selectedDateStr);
-    if (members.length >= MAX_STAFF) return;
-
-    const name = prompt(`${selectedDateStr} に追加するお名前を入力してください:`);
-    if (name && name.trim()) {
-      members.push({
-        name: name.trim(),
-        originDate: selectedDateStr,
-        type: 'free'
-      });
-      customShifts[selectedDateStr] = members;
-      saveStorage();
-    }
-  }
-
-  function removeFreeShift(index) {
-    const members = getShiftObjectsForDate(selectedDateStr);
-    const item = members[index];
-    if (confirm(`${item.name}さんの自由練習を削除しますか？`)) {
-      members.splice(index, 1);
-      customShifts[selectedDateStr] = members;
-      saveStorage();
-    }
-  }
-
-  /* 特例申請機能 */
-  function openSpecialRequestModal(name, index) {
-    document.getElementById('special-req-title').textContent = `【特例申請】${name}さん (${selectedDateStr})`;
-    document.getElementById('req-member-name').value = name;
-    document.getElementById('req-member-index').value = index;
-    document.getElementById('req-type').value = 'absent';
-    document.getElementById('req-reason').value = '';
-    document.getElementById('req-target-date').value = selectedDateStr;
-    toggleReqTypeUI();
-    document.getElementById('special-request-modal').style.display = 'flex';
-  }
-
-  function toggleReqTypeUI() {
-    const type = document.getElementById('req-type').value;
-    document.getElementById('group-target-date').style.display = (type === 'special_transfer') ? 'block' : 'none';
-  }
-
-  function submitSpecialRequest() {
-    const name = document.getElementById('req-member-name').value;
-    const index = parseInt(document.getElementById('req-member-index').value, 10);
-    const type = document.getElementById('req-type').value;
-    const reason = document.getElementById('req-reason').value.trim();
-    const targetDate = document.getElementById('req-target-date').value;
-
-    if (!reason) {
-      alert('理由を入力してください。');
-      return;
-    }
-
-    if (type === 'special_transfer' && (!targetDate || targetDate === selectedDateStr)) {
-      alert('振替先の別の日付を正しく選択してください。');
-      return;
-    }
-
-    const newReq = {
-      id: Date.now(),
-      name: name,
-      originalDate: selectedDateStr,
-      index: index,
-      type: type,
-      reason: reason,
-      targetDate: targetDate,
-      createdAt: new Date().toLocaleString('ja-JP')
-    };
-
-    pendingRequests.push(newReq);
-    saveStorage();
-    closeModal('special-request-modal');
-    alert('管理者に申請を送信しました。承認されるまでしばらくお待ちください。');
-  }
-
-  /* 申請承認・管理 */
-  function openRequestsModal() {
-    document.getElementById('dropdown-menu').classList.remove('show');
-    const listDiv = document.getElementById('requests-list');
-    if (pendingRequests.length === 0) {
-      listDiv.innerHTML = '<p style="font-size:13px; color:var(--text-sub); text-align:center; padding: 20px 0;">届いている特例申請はありません。</p>';
-    } else {
-      listDiv.innerHTML = pendingRequests.map(req => {
-        const isAbsent = req.type === 'absent';
-        const typeBadge = isAbsent 
-          ? '<span class="request-type-badge req-absent">特例欠席</span>' 
-          : '<span class="request-type-badge req-special">特別振替 (回数なし)</span>';
-
-        return `
-          <div class="request-card">
-            <div>${typeBadge} <strong style="font-size:14px;">${req.name}</strong></div>
-            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">
-              対象日: ${req.originalDate} ${!isAbsent ? ` ➔ 振替希望: ${req.targetDate}` : ''}
-            </div>
-            <div class="request-reason">理由: ${req.reason}</div>
-            <div style="font-size:10px; color:#999; margin-bottom:8px;">申請日時: ${req.createdAt}</div>
-            <div style="display:flex; gap:6px; justify-content:flex-end;">
-              <button class="btn-action btn-cancel" onclick="rejectRequest(${req.id})">却下</button>
-              <button class="btn-main" style="padding: 6px 12px; font-size:12px; flex:initial;" onclick="approveRequest(${req.id})">承認して実行</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-    document.getElementById('requests-modal').style.display = 'flex';
-  }
-
-  function approveRequest(reqId) {
-    const reqIndex = pendingRequests.findIndex(r => r.id === reqId);
-    if (reqIndex === -1) return;
-    const req = pendingRequests[reqIndex];
-
-    const currentMembers = getShiftObjectsForDate(req.originalDate);
-    const targetIdx = currentMembers.findIndex(m => m.name === req.name);
-
-    if (req.type === 'absent') {
-      if (targetIdx !== -1) {
-        currentMembers.splice(targetIdx, 1);
-        customShifts[req.originalDate] = currentMembers;
-      }
-      alert(`${req.name}さんの ${req.originalDate} の特例欠席を承認し、シフトから外しました。`);
-    } else if (req.type === 'special_transfer') {
-      const targetMembers = getShiftObjectsForDate(req.targetDate);
-      if (targetMembers.length >= MAX_STAFF) {
-        alert(`${req.targetDate} は満員のため特別振替を実行できません。`);
-        return;
-      }
-
-      if (targetIdx !== -1) {
-        currentMembers.splice(targetIdx, 1);
-      }
-
-      targetMembers.push({
-        name: req.name,
-        originDate: req.originalDate,
-        type: 'special_transfer'
-      });
-
-      customShifts[req.originalDate] = currentMembers;
-      customShifts[req.targetDate] = targetMembers;
-
-      alert(`${req.name}さんの特別振替（${req.originalDate} ➔ ${req.targetDate}）を承認しました。※振替回数は消費されません。`);
-    }
-
-    pendingRequests.splice(reqIndex, 1);
-    saveStorage();
-    openRequestsModal();
-  }
-
-  function rejectRequest(reqId) {
-    if (confirm('この申請を却下しますか？')) {
-      pendingRequests = pendingRequests.filter(r => r.id !== reqId);
-      saveStorage();
-      openRequestsModal();
-    }
-  }
-
-  /* 通常振替 */
-  function openRescheduleModal(memberName, index) {
-    const currentDayName = getDayName(selectedDateStr);
-    const used = getRescheduleUsed(memberName, currentDayName);
-
-    if (used >= MAX_RESCHEDULE_PER_DAY) {
-      alert(`${memberName}さんの【${currentDayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。\n上限を超える場合は「特例申請」ボタンから管理者に申請してください。`);
-      return;
-    }
-
-    document.getElementById('reschedule-modal-title').textContent = `【通常振替】${memberName}さん`;
-    document.getElementById('reschedule-member-name').value = memberName;
-    document.getElementById('reschedule-member-index').value = index;
-    document.getElementById('reschedule-date-input').value = selectedDateStr;
-    document.getElementById('reschedule-modal').style.display = 'flex';
-  }
-
-  function executeReschedule() {
-    const memberName = document.getElementById('reschedule-member-name').value;
-    const index = parseInt(document.getElementById('reschedule-member-index').value, 10);
-    const targetDateStr = document.getElementById('reschedule-date-input').value;
-
-    if (!targetDateStr || targetDateStr === selectedDateStr) {
-      alert('別の日付を正しく選択してください。');
-      return;
-    }
-
-    const targetMembers = getShiftObjectsForDate(targetDateStr);
-    if (targetMembers.length >= MAX_STAFF) {
-      alert(`${targetDateStr} は最大人数の14名に達しているため振替できません。`);
-      return;
-    }
-
-    if (targetMembers.some(m => m.name === memberName)) {
-      alert(`${memberName}さんは既に ${targetDateStr} に登録されています。`);
-      return;
-    }
-
-    const currentDayName = getDayName(selectedDateStr);
-    const used = getRescheduleUsed(memberName, currentDayName);
-
-    const currentMembers = getShiftObjectsForDate(selectedDateStr);
-    currentMembers.splice(index, 1);
-
-    targetMembers.push({
-      name: memberName,
-      originDate: selectedDateStr,
-      type: 'transfer'
-    });
-
-    customShifts[selectedDateStr] = currentMembers;
-    customShifts[targetDateStr] = targetMembers;
-
-    updateRescheduleCount(memberName, currentDayName, 1);
-
-    saveStorage();
-    closeModal('reschedule-modal');
-    alert(`${memberName}さんを ${targetDateStr} へ振替しました。\n（${currentDayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
-  }
-
-  function cancelReschedule(memberName, originDateStr, index, type) {
-    const originDayName = getDayName(originDateStr);
-
-    if (confirm(`${memberName}さんの振替を取り消し、元に戻しますか？`)) {
-      const currentMembers = getShiftObjectsForDate(selectedDateStr);
-      currentMembers.splice(index, 1);
-
-      const originMembers = getShiftObjectsForDate(originDateStr);
-      originMembers.push({
-        name: memberName,
-        originDate: originDateStr,
-        type: 'fixed'
-      });
-
-      customShifts[selectedDateStr] = currentMembers;
-      customShifts[originDateStr] = originMembers;
-
-      if (type !== 'special_transfer') {
-        updateRescheduleCount(memberName, originDayName, -1);
-      }
-
-      saveStorage();
-      alert(`${memberName}さんの振替を取り消し、${originDateStr} の枠に戻しました。`);
-    }
-  }
-
-  /* 固定メンバー設定 */
-  function openMasterConfig() {
-    document.getElementById('dropdown-menu').classList.remove('show');
-    if (currentUserRole !== 'admin') return;
-
-    const inputsContainer = document.getElementById('master-inputs');
-    const days = ['月', '火', '水', '木', '金', '土'];
-    
-    inputsContainer.innerHTML = days.map(d => `
-      <div class="form-group">
-        <label>${d}曜日の固定メンバー</label>
-        <input type="text" id="master-${d}" value="${(masterConfig[d] || []).join(', ')}">
-      </div>
-    `).join('');
-
-    document.getElementById('master-modal').style.display = 'flex';
-  }
-
-  function saveMasterConfig() {
-    const days = ['月', '火', '水', '木', '金', '土'];
-    days.forEach(d => {
-      const inputVal = document.getElementById(`master-${d}`).value;
-      masterConfig[d] = inputVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
-    });
-
-    closeModal('master-modal');
-    saveStorage();
-    alert('固定パターンを更新しました！');
-  }
-
-  /* データ管理機能 */
-  function openDataModal() {
-    document.getElementById('dropdown-menu').classList.remove('show');
-    if (currentUserRole !== 'admin') return;
-    document.getElementById('data-modal').style.display = 'flex';
-  }
-
-  function exportData() {
-    const backupData = {
-      masterConfig: masterConfig,
-      customShifts: customShifts,
-      userDayRescheduleCounts: userDayRescheduleCounts,
-      pendingRequests: pendingRequests,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `oakra_shift_backup_${formatDate(new Date())}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const data = JSON.parse(e.target.result);
-        if (data.masterConfig && data.customShifts && data.userDayRescheduleCounts) {
-          masterConfig = data.masterConfig;
-          customShifts = data.customShifts;
-          userDayRescheduleCounts = data.userDayRescheduleCounts;
-          pendingRequests = data.pendingRequests || [];
-          saveStorage();
-          closeModal('data-modal');
-          alert('データを正常に復元しました。');
-        } else {
-          alert('無効なバックアップファイルフォーマットです。');
-        }
-      } catch (err) {
-        alert('ファイルの読み込みに失敗しました。');
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function resetRescheduleCounts() {
-    if (confirm('すべてのメンバーの「振替回数カウント」を初期化（0回に戻す）しますか？')) {
-      userDayRescheduleCounts = {};
-      saveStorage();
-      closeModal('data-modal');
-      alert('振替回数を初期化しました。');
-    }
-  }
-
-  function resetAllData() {
-    if (confirm('【注意】すべてのデータを削除して初期状態に戻しますか？')) {
-      localStorage.clear();
-      masterConfig = defaultMaster;
-      customShifts = {};
-      userDayRescheduleCounts = {};
-      pendingRequests = [];
-      saveStorage();
-      closeModal('data-modal');
-      alert('すべてのデータを初期化しました。');
-    }
-  }
-
-  function render() {
-    renderTabs();
-    renderContent();
-  }
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-
-  checkAuth();
-</script type="module" src="app.js">
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
