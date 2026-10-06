@@ -10,4 +10,4 @@ export const firebaseConfig = {
 
 // ログインIDの後ろに付ける仮のメールドメイン（実在しなくてOK）
 // 例：ID「tanaka」→ tanaka@oakra-golf.example としてFirebaseに登録される
-export const LOGIN_EMAIL_DOMAIN = "oakra-golf.example";
+export const LOGIN_EMAIL_DOMAIN = "okura-golf.example";
