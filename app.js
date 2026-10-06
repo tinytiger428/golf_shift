@@ -383,8 +383,7 @@ function renderContent() {
     }
 
     return `
-      <div class="member-card t-${esc(item.type)}">
-        <div class="avatar">${esc(Array.from(item.name)[0] || '?')}</div>
+      <div class="member-card">
         <div class="member-info">
           <div><span class="member-name">${esc(item.name)}</span>${tag}</div>
           <span class="member-sub">${esc(dayName)}曜枠 振替残: ${remaining} / ${MAX_RESCHEDULE_PER_DAY} 回</span>
