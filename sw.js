@@ -1,5 +1,5 @@
-const CACHE_NAME = 'shift-app-v2';
-const ASSETS = ['./', './index.html', './app.js', './manifest.json'];
+const CACHE_NAME = 'shift-app-v4';
+const ASSETS = ['./', './index.html', './app.js', './firebase-config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS)));
