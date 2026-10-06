@@ -314,6 +314,7 @@ function renderTabs() {
   const weekDays = getWeekDays(currentMonday);
   const first = weekDays[0];
   document.getElementById('week-title').textContent = `${first.getFullYear()}年 ${first.getMonth() + 1}月`;
+  document.getElementById('jump-date').value = selectedDateStr;
 
   document.getElementById('day-tabs').innerHTML = weekDays.map(d => {
     const dateStr = formatDate(d);
@@ -409,6 +410,23 @@ function changeWeek(direction) {
   selectedDateStr = formatDate(getWeekDays(currentMonday)[0]);
   render();
 }
+
+// タイトルをタップ → カレンダーで選んだ日の週へ移動
+function jumpToDate(dateStr) {
+  if (!dateStr) return;
+  const d = new Date(dateStr.replace(/-/g, '/'));
+  if (Number.isNaN(d.getTime())) return;
+  currentMonday = getMonday(d);
+  // 日曜は活動日ではないので、その週の月曜を選択する
+  selectedDateStr = d.getDay() === 0 ? formatDate(currentMonday) : dateStr;
+  render();
+}
+
+const jumpInput = document.getElementById('jump-date');
+jumpInput.addEventListener('change', e => jumpToDate(e.target.value));
+jumpInput.addEventListener('click', () => {
+  try { jumpInput.showPicker(); } catch (e) { /* 非対応ブラウザは標準動作に任せる */ }
+});
 
 /* ============ 共通バリデーション ============ */
 // 振替先の日付チェック。問題があればメッセージを返す
