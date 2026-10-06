@@ -224,7 +224,6 @@ async function handleLogin(e) {
     await signInWithEmailAndPassword(auth, `${id}@${LOGIN_EMAIL_DOMAIN}`, pass);
     errorDiv.style.display = 'none';
   } catch (err) {
-    console.error('LOGIN ERROR:', err.code, err.message);
     errorDiv.style.display = 'block';
   }
 }
@@ -589,6 +588,10 @@ function openRescheduleModal(name, index) {
     alert(`${name}さんの【${dayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。\n上限を超える場合は「特例申請」ボタンから管理者に申請してください。`);
     return;
   }
+  if (getShiftObjectsForDate(selectedDateStr).length - 1 < MIN_STAFF) {
+    alert(`振替すると ${selectedDateStr} が${MIN_STAFF}名未満になります。\n代理を立ててください。`);
+    return;
+  }
   document.getElementById('reschedule-modal-title').textContent = `【通常振替】${name}さん`;
   document.getElementById('reschedule-member-name').value = name;
   document.getElementById('reschedule-member-index').value = index;
@@ -620,8 +623,9 @@ function executeReschedule() {
     return;
   }
 
-  if (members.length - 1 < MIN_STAFF &&
-      !confirm(`振替すると ${selectedDateStr} が ${members.length - 1}名（最低${MIN_STAFF}名未満）になります。続けますか？`)) {
+  if (members.length - 1 < MIN_STAFF) {
+    alert(`振替すると ${selectedDateStr} が${MIN_STAFF}名未満になります。\n代理を立ててください。`);
+    closeModal('reschedule-modal');
     return;
   }
 
