@@ -136,11 +136,11 @@ service cloud.firestore {
 
     // 特例申請: 作成は本人、閲覧・承認・却下は admin / 幹部
     match /requests/{id} {
-      allow create: if signedIn() && hasUserDoc()
+      allow create: if signedIn()
         && id.matches('^[0-9]{10,16}$')
         && request.resource.data.keys().hasOnly(['id', 'name', 'originalDate', 'type', 'reason', 'targetDate', 'createdAt'])
         && request.resource.data.id is number
-        && request.resource.data.name == myName()
+        && (isStaff() || (hasUserDoc() && request.resource.data.name == myName()))
         && request.resource.data.type in ['absent', 'special_transfer', 'extension_transfer']
         && request.resource.data.reason is string
         && request.resource.data.reason.size() > 0
