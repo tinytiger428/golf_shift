@@ -939,38 +939,6 @@ function switchView(viewName, targetDateStr) {
   }
 }
 
-function renderUpcomingSchedule() {
-  const container = document.getElementById('upcoming-schedule-list');
-  if (!container) return;
-
-  const today = new Date();
-  const list = [];
-  let current = new Date(today);
-
-  while (list.length < 3) {
-    if (current.getDay() !== 0) {
-      list.push(new Date(current));
-    }
-    current.setDate(current.getDate() + 1);
-  }
-
-  container.innerHTML = list.map(d => {
-    const dateStr = formatDate(d);
-    const dayName = WEEKDAYS[d.getDay()];
-    const members = getShiftObjectsForDate(dateStr);
-    const count = members.length;
-
-    return `
-      <div class="upcoming-card" onclick="onCalendarDateClick('${dateStr}')">
-        <div>
-          <div class="upcoming-date">${d.getMonth() + 1}月${d.getDate()}日 (${dayName})</div>
-          <div class="upcoming-detail">出勤メンバー: ${count}名 (${members.map(m => esc(m.name)).join(', ') || 'なし'})</div>
-        </div>
-        <span class="upcoming-badge">${count}名出勤</span>
-      </div>`;
-  }).join('');
-}
-
 function renderTransferHistory() {
   const container = document.getElementById('transfer-history-list');
   if (!container) return;
@@ -1403,7 +1371,6 @@ function jumpToShiftDetail(dateStr) {
 
 function renderDashboard() {
   renderMyShift();
-  renderUpcomingSchedule();
   renderTransferHistory();
   renderCalendar();
 }

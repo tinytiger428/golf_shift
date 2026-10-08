@@ -427,20 +427,7 @@
     }
     .section-header h3 { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.06em; color: var(--green-deep); }
 
-    .upcoming-list, .transfer-list { display: flex; flex-direction: column; gap: 8px; }
-    .upcoming-card {
-      display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer;
-      padding: 10px 12px; background: #fafcfa; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 4px 10px 10px 4px;
-    }
-    .upcoming-card:active { background: var(--green-tint); }
-    .upcoming-date { font-size: 15px; font-weight: 700; color: var(--ink); }
-    .upcoming-detail { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
-    .upcoming-badge {
-      flex: none; white-space: nowrap; padding: 3px 10px; border-radius: 999px;
-      font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-tint);
-    }
-    .upcoming-badge.transfer { color: var(--amber); background: var(--amber-tint); }
-    .upcoming-badge.special { color: var(--sky); background: var(--sky-tint); }
+    .transfer-list { display: flex; flex-direction: column; gap: 8px; }
 
     .transfer-card { padding: 10px 12px; background: #fafcfa; border: 1px solid var(--line); border-radius: 10px; }
     .transfer-card-header { display: flex; justify-content: space-between; align-items: center; }
@@ -834,14 +821,6 @@
         <span class="my-shift-user-tag" id="my-shift-user-badge">ログイン中</span>
       </div>
       <div id="my-shift-container"></div>
-    </div>
-
-    <!-- 直近の日程 -->
-    <div class="dashboard-section">
-      <div class="section-header">
-        <h3>直近の全体の出勤予定</h3>
-      </div>
-      <div id="upcoming-schedule-list" class="upcoming-list"></div>
     </div>
 
     <!-- 振替状況（何日の分をいつに振り替えたか） -->
