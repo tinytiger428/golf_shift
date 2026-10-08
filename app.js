@@ -1053,6 +1053,8 @@ function renderTransferHistory() {
 /* ============ マイシフト・自分の振替 ============ */
 let quickSelectedOriginDate = '';
 let quickSelectedTargetDate = '';
+let quickBlocked = false;      // 上限・最低人数で振替自体ができない状態
+let quickExtensionMode = false; // 振替日程延長申請モード
 
 function renderMyShift() {
   const container = document.getElementById('my-shift-container');
@@ -1248,9 +1250,13 @@ function openQuickRescheduleModal(originDateStr) {
     }
   }
 
+  quickBlocked = isBlocked;
   if (submitBtn) {
     submitBtn.disabled = isBlocked;
   }
+  const extToggle = document.getElementById('quick-ext-toggle');
+  if (extToggle) extToggle.style.display = isBlocked ? 'none' : '';
+  setQuickExtensionMode(false);
 
   // 候補日リスト（今日以降の活動日をピックアップ）
   renderQuickTargetDatesGrid(originDateStr);
@@ -1263,6 +1269,7 @@ function openQuickRescheduleModal(originDateStr) {
 
   document.getElementById('quick-reschedule-origin-date').value = originDateStr;
   document.getElementById('quick-selected-target-date').value = '';
+  updateQuickDateMessage();
 
   const modal = document.getElementById('quick-reschedule-modal');
   if (modal) modal.style.display = 'flex';
@@ -1272,39 +1279,43 @@ function renderQuickTargetDatesGrid(originDateStr) {
   const grid = document.getElementById('quick-target-dates-grid');
   if (!grid) return;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 振替可能期間（振替元の前後 TRANSFER_WINDOW_DAYS 日）の活動日を候補にする
+  const today = formatDate(new Date());
+  const w = getTransferWindow(originDateStr);
+  const fixedDays = getFixedDays(currentMemberName);
   const candidates = [];
 
-  for (let i = 1; i <= 35 && candidates.length < 16; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    if (d.getDay() === 0) continue; // 日曜休み
-
-    const dateStr = formatDate(d);
-    if (dateStr === originDateStr) continue; // 同じ日は除外
+  for (let dateStr = w.min; dateStr <= w.max; dateStr = addDays(dateStr, 1)) {
+    if (dateStr < today || dateStr === originDateStr) continue;
+    const dayName = getDayName(dateStr);
+    if (dayName === '日') continue; // 日曜休み
 
     const members = getShiftObjectsForDate(dateStr);
-    const count = members.length;
-    const isAlreadyIn = members.some(m => normName(m.name) === normName(currentMemberName));
-    const isFull = count >= MAX_STAFF;
-
     candidates.push({
       dateStr,
-      d,
-      dayName: getDayName(dateStr),
-      count,
-      isAlreadyIn,
-      isFull
+      d: new Date(dateStr.replace(/-/g, '/')),
+      dayName,
+      count: members.length,
+      isAlreadyIn: members.some(m => normName(m.name) === normName(currentMemberName)),
+      isFull: members.length >= MAX_STAFF,
+      isFixedDay: fixedDays.includes(dayName)
     });
   }
 
+  if (candidates.length === 0) {
+    grid.innerHTML = '<div class="empty-state">振替可能な日程がありません</div>';
+    return;
+  }
+
   grid.innerHTML = candidates.map(c => {
-    const disabled = c.isAlreadyIn || c.isFull;
+    const disabled = c.isAlreadyIn || c.isFull || c.isFixedDay;
     let statusText = '';
     let statusColor = 'var(--primary)';
 
-    if (c.isAlreadyIn) {
+    if (c.isFixedDay) {
+      statusText = '固定曜日';
+      statusColor = 'var(--text-sub)';
+    } else if (c.isAlreadyIn) {
       statusText = '出勤予定あり';
       statusColor = 'var(--text-sub)';
     } else if (c.isFull) {
@@ -1334,6 +1345,7 @@ function selectQuickTargetDate(dateStr) {
 
   const customInput = document.getElementById('quick-reschedule-custom-date');
   if (customInput) customInput.value = dateStr;
+  updateQuickDateMessage();
 }
 
 function onQuickCustomDateSelect(val) {
@@ -1344,6 +1356,73 @@ function onQuickCustomDateSelect(val) {
   document.querySelectorAll('.target-date-card').forEach(el => el.classList.remove('selected'));
   const card = document.getElementById(`target-card-${val}`);
   if (card) card.classList.add('selected');
+  updateQuickDateMessage();
+}
+
+// 選んだ日がルール違反なら赤文字で理由を表示（確定ボタンも押せなくする）
+function updateQuickDateMessage() {
+  const msgEl = document.getElementById('quick-date-error');
+  const target = document.getElementById('quick-selected-target-date').value;
+  const msg = getTransferDateMessage(target, quickSelectedOriginDate, currentMemberName, quickExtensionMode);
+  if (msgEl) {
+    msgEl.textContent = msg;
+    msgEl.style.display = msg ? 'block' : 'none';
+  }
+  ['quick-reschedule-submit-btn', 'quick-ext-submit-btn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = quickBlocked || !!msg;
+  });
+}
+
+function setQuickExtensionMode(on) {
+  quickExtensionMode = on;
+  const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+  show('quick-ext-group', on);
+  show('quick-ext-submit-btn', on);
+  show('quick-reschedule-submit-btn', !on);
+  show('quick-grid-group', !on); // 延長申請では期間外の日をカレンダーから選ぶ
+  const toggle = document.getElementById('quick-ext-toggle');
+  if (toggle) toggle.textContent = on ? '通常振替に戻る' : '振替日程延長';
+  const reason = document.getElementById('quick-ext-reason');
+  if (reason && !on) reason.value = '';
+  updateQuickDateMessage();
+}
+
+function toggleQuickExtensionMode() {
+  setQuickExtensionMode(!quickExtensionMode);
+}
+
+function submitQuickExtension() {
+  const originDate = quickSelectedOriginDate;
+  const targetDate = document.getElementById('quick-selected-target-date').value;
+  const reason = document.getElementById('quick-ext-reason').value.trim();
+
+  if (!currentMemberName) { alert('ログインしてください。'); return; }
+  if (!targetDate) { alert('振替希望日を選択してください。'); return; }
+  const err = getTransferDateMessage(targetDate, originDate, currentMemberName, true);
+  if (err) { alert(err); return; }
+  if (!reason) { alert('延長が必要な理由を入力してください。'); return; }
+  if (reason.length > 200) { alert('理由は200文字以内で入力してください。'); return; }
+
+  const dayName = getDayName(originDate);
+  if (currentUserRole !== 'admin' && getRescheduleUsed(currentMemberName, dayName) >= MAX_RESCHEDULE_PER_DAY) {
+    alert(`${dayName}曜日枠の振替上限に達しています。`);
+    return;
+  }
+
+  const reqObj = {
+    id: Date.now(),
+    name: currentMemberName,
+    originalDate: originDate,
+    type: 'extension_transfer',
+    reason,
+    targetDate,
+    createdAt: new Date().toLocaleString('ja-JP')
+  };
+  setDoc(doc(db, 'requests', String(reqObj.id)), reqObj)
+    .catch(() => alert('申請の送信に失敗しました。もう一度お試しください。'));
+  closeModal('quick-reschedule-modal');
+  alert('振替日程延長を申請しました。幹部・管理者の承認後に振替が確定します。');
 }
 
 async function confirmQuickReschedule() {
@@ -1359,7 +1438,7 @@ async function confirmQuickReschedule() {
     return;
   }
 
-  const err = validateTargetDate(targetDate, originDate, currentMemberName);
+  const err = getTransferDateMessage(targetDate, originDate, currentMemberName, false);
   if (err) {
     alert(err);
     return;
@@ -1795,6 +1874,17 @@ function executeReschedule() {
   alert(`${name}さんを ${targetDate} へ振替しました。\n（${dayName}曜枠 振替残り: ${Math.max(0, MAX_RESCHEDULE_PER_DAY - (used + 1))}回）`);
 }
 
+// 振替先の日付がルール違反なら理由を返す（通常振替/延長申請の両モーダルで共通）
+function getTransferDateMessage(target, origin, name, extension) {
+  if (!target || target === origin) return '';
+  const msg = validateTargetDate(target, origin, name) || checkNotFixedDay(target, name);
+  if (msg) return msg;
+  const inWindow = isWithinTransferWindow(target, origin);
+  if (!extension && !inWindow) return '振替可能期間外です。期間内の日程を選ぶか、「振替日程延長」から申請してください。';
+  if (extension && inWindow) return '振替可能期間内の日程です。「通常振替に戻る」から振替してください。';
+  return '';
+}
+
 // 日付を選んだ時点で、ルール違反なら赤文字で理由を表示（OKボタンも押せなくする）
 function updateRescheduleDateMessage() {
   const msgEl = document.getElementById('reschedule-date-error');
@@ -1804,15 +1894,7 @@ function updateRescheduleDateMessage() {
   const name = document.getElementById('reschedule-member-name').value;
   const target = document.getElementById('reschedule-date-input').value;
 
-  let msg = '';
-  if (target && target !== selectedDateStr) {
-    msg = validateTargetDate(target, selectedDateStr, name) || checkNotFixedDay(target, name);
-    if (!msg) {
-      const inWindow = isWithinTransferWindow(target, selectedDateStr);
-      if (!extension && !inWindow) msg = '振替可能期間外です。期間内の日程を選ぶか、「振替日程延長」から申請してください。';
-      else if (extension && inWindow) msg = '振替可能期間内の日程です。「通常振替に戻る」から振替してください。';
-    }
-  }
+  const msg = getTransferDateMessage(target, selectedDateStr, name, extension);
   msgEl.textContent = msg;
   msgEl.style.display = msg ? 'block' : 'none';
   ['reschedule-confirm', 'reschedule-ext-submit'].forEach(id => {
@@ -2098,6 +2180,6 @@ Object.assign(window, {
   switchView, changeCalendarMonth, onCalendarDateClick,
   toggleExtensionMode, submitExtensionRequest, openAllHistory, showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
   addMasterMember, removeMasterMember,
-  renderMyShift, openQuickRescheduleModal, selectQuickTargetDate, onQuickCustomDateSelect, confirmQuickReschedule,
+  renderMyShift, openQuickRescheduleModal, toggleQuickExtensionMode, submitQuickExtension, selectQuickTargetDate, onQuickCustomDateSelect, confirmQuickReschedule,
   openMyFixedDayModal, saveMyFixedDays, jumpToShiftDetail, cancelReschedule, removeFreeShift
 });

@@ -999,22 +999,31 @@
       振替元の出勤日: <strong id="quick-reschedule-origin-label" style="color: var(--primary);"></strong>
     </div>
 
-    <div class="form-group">
-      <label style="font-weight: bold;">直近の候補から選ぶ（空き状況順）</label>
+    <div class="form-group" id="quick-grid-group">
+      <label style="font-weight: bold;">振替可能な日程から選ぶ（前後6日・固定曜日を除く）</label>
       <div class="target-date-picker-grid" id="quick-target-dates-grid"></div>
     </div>
 
     <div class="form-group">
       <label style="font-weight: bold;">またはカレンダーから日付を選ぶ</label>
       <input type="date" id="quick-reschedule-custom-date" onchange="onQuickCustomDateSelect(this.value)">
+      <div id="quick-date-error" style="display:none; color:#c0392b; font-size:12px; font-weight:600; margin-top:6px; white-space:pre-line;"></div>
+    </div>
+
+    <div class="form-group" id="quick-ext-group" style="display:none;">
+      <label>延長が必要な理由</label>
+      <textarea id="quick-ext-reason" rows="3" maxlength="200" placeholder="期間外の日程が必要な理由を入力してください"></textarea>
+      <div class="form-hint">幹部・管理者の承認後に振替が確定します</div>
     </div>
 
     <input type="hidden" id="quick-selected-target-date">
     <input type="hidden" id="quick-reschedule-origin-date">
 
+    <button type="button" class="link-btn" id="quick-ext-toggle" onclick="toggleQuickExtensionMode()">振替日程延長</button>
     <div class="modal-actions">
       <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('quick-reschedule-modal')">キャンセル</button>
       <button class="btn-main" id="quick-reschedule-submit-btn" style="padding: 8px 16px; flex: initial;" onclick="confirmQuickReschedule()">この日に振替を確定する</button>
+      <button class="btn-main" id="quick-ext-submit-btn" style="padding: 8px 16px; flex: initial; display:none;" onclick="submitQuickExtension()">延長を申請する</button>
     </div>
   </div>
 </div>
