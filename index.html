@@ -359,6 +359,9 @@
     .modal-title { font-size: 16px; font-weight: bold; color: var(--primary-dark); margin-bottom: 12px; }
 
     .form-group { margin-bottom: 14px; }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 56px; }
+    .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-sub); font-size: 12px; font-weight: 600; padding: 6px 8px; cursor: pointer; }
     .form-group label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 4px; font-weight: 600; }
     .form-group input, .form-group textarea, .form-group select {
       width: 100%;
@@ -550,7 +553,7 @@
         </div>
         <div class="form-group">
           <label for="login-pass">パスワード</label>
-          <input type="password" id="login-pass" placeholder="パスワードを入力" required autocomplete="current-password">
+          <div class="pw-wrap"><input type="password" id="login-pass" placeholder="パスワードを入力" required autocomplete="current-password"><button type="button" class="pw-toggle" aria-label="パスワードを表示" aria-pressed="false" onclick="var i=document.getElementById('login-pass');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'隠す':'表示';this.setAttribute('aria-pressed',s)">表示</button></div>
         </div>
         <button type="submit" class="btn-main" style="width: 100%; margin-top: 10px;">ログイン</button>
       </form>
@@ -577,7 +580,7 @@
         </div>
         <div class="form-group">
           <label for="signup-pass">パスワード</label>
-          <input type="password" id="signup-pass" placeholder="8文字以上" required minlength="8" maxlength="64" autocomplete="new-password">
+          <div class="pw-wrap"><input type="password" id="signup-pass" placeholder="8文字以上" required minlength="8" maxlength="64" autocomplete="new-password"><button type="button" class="pw-toggle" aria-label="パスワードを表示" aria-pressed="false" onclick="var i=document.getElementById('signup-pass');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'隠す':'表示';this.setAttribute('aria-pressed',s)">表示</button></div>
         </div>
         <button type="submit" class="btn-main" id="signup-submit" style="width: 100%; margin-top: 10px;">アカウントを作成</button>
       </form>
