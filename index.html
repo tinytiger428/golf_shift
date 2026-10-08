@@ -529,6 +529,205 @@
     .master-add-row { display: flex; gap: 6px; }
     .master-add-row input { flex: 1; }
 
+    /* ---------- マイシフト・自分の振替 ---------- */
+    .my-shift-section {
+      background: linear-gradient(135deg, #ffffff 0%, #f7faf8 100%);
+      border: 1.5px solid var(--primary);
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(0, 98, 65, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .my-shift-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--accent-gold));
+    }
+    .my-shift-user-tag {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .my-profile-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .my-profile-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .my-avatar-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .my-name-text {
+      font-size: 15px;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .my-role-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--sky-tint);
+      color: var(--sky);
+      margin-left: 6px;
+    }
+    .my-counts-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .count-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      color: var(--text-sub);
+    }
+    .count-pill strong {
+      color: var(--primary);
+    }
+    .my-schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .my-schedule-item {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .my-schedule-item:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 98, 65, 0.08);
+    }
+    .my-schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .my-schedule-date {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .my-schedule-details {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .my-schedule-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--line);
+    }
+    .btn-reschedule-quick {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-reschedule-quick:hover {
+      background: var(--primary-dark);
+    }
+    .btn-reschedule-quick:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .target-date-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      margin: 12px 0;
+      padding: 4px;
+    }
+    .target-date-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      background: #ffffff;
+      transition: all 0.15s;
+    }
+    .target-date-card:hover:not(.disabled) {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .target-date-card.selected {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      box-shadow: 0 0 0 2px var(--primary);
+      font-weight: bold;
+    }
+    .target-date-card.disabled {
+      opacity: 0.5;
+      background: #f0f0f0;
+      cursor: not-allowed;
+    }
+    .target-date-card .d-name { font-size: 13px; font-weight: bold; }
+    .target-date-card .d-status { font-size: 10px; margin-top: 4px; }
+    .staff-alert-banner {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning);
+      color: #7c5200;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
@@ -592,31 +791,33 @@
 <header>
   <div>
     <h1>オークラ振替連絡</h1>
-    <div class="sub-info">曜日ごとに1人5回まで振替可能</div>
+    <div class="sub-info" id="header-user-info">曜日ごとに1人5回まで振替可能</div>
   </div>
 
-  <!-- 管理者用メニュー -->
-  <div class="menu-container" id="admin-menu-area" style="display:none;">
-    <button class="menu-toggle-btn" onclick="toggleDropdownMenu(event)">
-      メニュー
-      <span class="menu-badge" id="menu-badge">0</span>
-    </button>
-
-    <div class="dropdown-menu" id="dropdown-menu">
-      <button class="dropdown-item" id="item-requests" onclick="openRequestsModal()">
-        申請管理
-        <span class="menu-badge" id="dropdown-req-badge">0</span>
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <!-- 管理者用メニュー -->
+    <div class="menu-container" id="admin-menu-area" style="display:none;">
+      <button class="menu-toggle-btn" onclick="toggleDropdownMenu(event)">
+        メニュー
+        <span class="menu-badge" id="menu-badge">0</span>
       </button>
-      <button class="dropdown-item" id="item-roles" onclick="openRolesModal()">管理権限</button>
-      <button class="dropdown-item" id="item-master" onclick="openMasterConfig()">固定設定</button>
-      <button class="dropdown-item" id="item-data" onclick="openDataModal()">データ管理</button>
-      <button class="dropdown-item logout-item" onclick="handleLogout()">ログアウト</button>
-    </div>
-  </div>
 
-  <!-- 一般ユーザー用 -->
-  <div id="user-menu-area" style="display:none;">
-    <button class="btn-logout-only" onclick="handleLogout()">ログアウト</button>
+      <div class="dropdown-menu" id="dropdown-menu">
+        <button class="dropdown-item" id="item-requests" onclick="openRequestsModal()">
+          申請管理
+          <span class="menu-badge" id="dropdown-req-badge">0</span>
+        </button>
+        <button class="dropdown-item" id="item-roles" onclick="openRolesModal()">管理権限</button>
+        <button class="dropdown-item" id="item-master" onclick="openMasterConfig()">固定設定</button>
+        <button class="dropdown-item" id="item-data" onclick="openDataModal()">データ管理</button>
+        <button class="dropdown-item logout-item" onclick="handleLogout()">ログアウト</button>
+      </div>
+    </div>
+
+    <!-- 一般ユーザー用 -->
+    <div id="user-menu-area" style="display:none;">
+      <button class="btn-logout-only" onclick="handleLogout()">ログアウト</button>
+    </div>
   </div>
 </header>
 
@@ -624,10 +825,21 @@
 <div id="dashboard-view" class="view-section">
   <div class="dashboard-container">
 
+    <!-- 👤 自分の出勤予定・振替（マイシフト） -->
+    <div class="dashboard-section my-shift-section">
+      <div class="section-header">
+        <h3 style="display: flex; align-items: center; gap: 6px;">
+          <span>👤 自分の出勤予定・振替</span>
+        </h3>
+        <span class="my-shift-user-tag" id="my-shift-user-badge">ログイン中</span>
+      </div>
+      <div id="my-shift-container"></div>
+    </div>
+
     <!-- 直近の日程 -->
     <div class="dashboard-section">
       <div class="section-header">
-        <h3>直近の出勤予定</h3>
+        <h3>直近の全体の出勤予定</h3>
       </div>
       <div id="upcoming-schedule-list" class="upcoming-list"></div>
     </div>
@@ -787,6 +999,61 @@
   </div>
 </div>
 
+<!-- クイック振替モーダル（マイシフト用） -->
+<div class="modal" id="quick-reschedule-modal">
+  <div class="modal-content" style="max-width: 460px;">
+    <div class="modal-title" id="quick-reschedule-title">振替先の選択</div>
+    <div id="quick-reschedule-warning"></div>
+
+    <div style="font-size: 13px; color: var(--text); background: var(--paper); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--line);">
+      振替元の出勤日: <strong id="quick-reschedule-origin-label" style="color: var(--primary);"></strong>
+    </div>
+
+    <div class="form-group">
+      <label style="font-weight: bold;">直近の候補から選ぶ（空き状況順）</label>
+      <div class="target-date-picker-grid" id="quick-target-dates-grid"></div>
+    </div>
+
+    <div class="form-group">
+      <label style="font-weight: bold;">またはカレンダーから日付を選ぶ</label>
+      <input type="date" id="quick-reschedule-custom-date" onchange="onQuickCustomDateSelect(this.value)">
+    </div>
+
+    <input type="hidden" id="quick-selected-target-date">
+    <input type="hidden" id="quick-reschedule-origin-date">
+
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('quick-reschedule-modal')">キャンセル</button>
+      <button class="btn-main" id="quick-reschedule-submit-btn" style="padding: 8px 16px; flex: initial;" onclick="confirmQuickReschedule()">この日に振替を確定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自分の担当曜日（固定枠）設定モーダル -->
+<div class="modal" id="my-fixed-day-modal">
+  <div class="modal-content">
+    <div class="modal-title">出勤担当曜日（固定枠）の設定</div>
+    <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 12px;">あなたの担当する出勤曜日を選択してください。登録すると毎週その曜日にシフトされます。（複数選択可）</p>
+
+    <div class="form-group">
+      <label style="font-weight: bold; margin-bottom: 8px; display: block;">出勤曜日を選択</label>
+      <div id="my-day-checkboxes" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="月" name="my-day"> 月曜</label>
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="火" name="my-day"> 火曜</label>
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="水" name="my-day"> 水曜</label>
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="木" name="my-day"> 木曜</label>
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="金" name="my-day"> 金曜</label>
+        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="土" name="my-day"> 土曜</label>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('my-fixed-day-modal')">キャンセル</button>
+      <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="saveMyFixedDays()">設定を保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- データ管理モーダル -->
 <div class="modal" id="data-modal">
   <div class="modal-content">
@@ -814,6 +1081,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=12"></script>
+<script type="module" src="app.js?v=13"></script>
 </body>
 </html>

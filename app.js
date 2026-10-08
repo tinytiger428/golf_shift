@@ -422,6 +422,16 @@ function updateRoleUI() {
   if (adminMenuArea) adminMenuArea.style.display = hasMenu ? 'block' : 'none';
   if (userMenuArea) userMenuArea.style.display = hasMenu ? 'none' : 'block';
 
+  const headerUserInfo = document.getElementById('header-user-info');
+  if (headerUserInfo) {
+    if (currentMemberName) {
+      const roleStr = ROLE_LABELS[currentUserRole] || 'ユーザー';
+      headerUserInfo.innerHTML = `👤 <strong>${esc(currentMemberName)}</strong> さん（${roleStr}） | 曜日ごとに5回まで振替可能`;
+    } else {
+      headerUserInfo.textContent = '曜日ごとに1人5回まで振替可能';
+    }
+  }
+
   const itemRoles = document.getElementById('item-roles');
   const itemMaster = document.getElementById('item-master');
   const itemData = document.getElementById('item-data');
@@ -1000,7 +1010,399 @@ function renderTransferHistory() {
   }).join('');
 }
 
+/* ============ マイシフト・自分の振替 ============ */
+let quickSelectedOriginDate = '';
+let quickSelectedTargetDate = '';
+
+function renderMyShift() {
+  const container = document.getElementById('my-shift-container');
+  const userBadge = document.getElementById('my-shift-user-badge');
+  if (!container) return;
+
+  if (!currentMemberName) {
+    if (userBadge) userBadge.textContent = '未ログイン';
+    container.innerHTML = `
+      <div style="text-align: center; padding: 24px 16px; color: var(--text-sub); font-size: 13px;">
+        ログインすると、ここにあなたの出勤予定と振替ボタンが表示されます。
+      </div>`;
+    return;
+  }
+
+  const roleLabel = ROLE_LABELS[currentUserRole] || 'ユーザー';
+  if (userBadge) {
+    userBadge.textContent = `${esc(currentMemberName)}（${roleLabel}）`;
+  }
+
+  // 担当曜日（固定枠）の確認
+  const myFixedDays = OPEN_DAYS.filter(d => (masterConfig[d] || []).map(normName).includes(normName(currentMemberName)));
+
+  // 各曜日の振替残数
+  const countsHtml = OPEN_DAYS.map(d => {
+    const isMyDay = myFixedDays.includes(d);
+    const used = getRescheduleUsed(currentMemberName, d);
+    const remaining = Math.max(0, MAX_RESCHEDULE_PER_DAY - used);
+    if (!isMyDay && used === 0) return '';
+    return `<span class="count-pill">${esc(d)}曜枠: <strong>残${remaining}回</strong> (${used}/${MAX_RESCHEDULE_PER_DAY}使用)</span>`;
+  }).filter(Boolean).join('');
+
+  // 今後42日（6週間）の予定を走査して自分のシフトを収集
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const mySchedules = [];
+
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (d.getDay() === 0) continue; // 日曜日は活動なし
+
+    const dateStr = formatDate(d);
+    const dayName = getDayName(dateStr);
+    const members = getShiftObjectsForDate(dateStr);
+    const myItem = members.find(m => normName(m.name) === normName(currentMemberName));
+
+    if (myItem) {
+      mySchedules.push({
+        dateStr,
+        dayName,
+        d,
+        item: myItem,
+        totalStaff: members.length
+      });
+    }
+  }
+
+  let scheduleListHtml = '';
+  if (mySchedules.length === 0) {
+    scheduleListHtml = `
+      <div style="text-align: center; padding: 24px 16px; background: #fff; border: 1px dashed var(--line); border-radius: 10px;">
+        <p style="font-size: 13px; font-weight: bold; color: var(--text);">直近の出勤予定が登録されていません</p>
+        <p style="font-size: 11px; color: var(--text-sub); margin-top: 4px; margin-bottom: 12px;">
+          担当の曜日（固定枠）を登録すると、毎週の予定が自動表示され振替できるようになります。
+        </p>
+        <button class="btn-main" style="font-size: 12px; padding: 6px 14px; margin: auto;" onclick="openMyFixedDayModal()">
+          ＋ 出勤担当曜日（固定枠）を設定する
+        </button>
+      </div>`;
+  } else {
+    scheduleListHtml = `
+      <div class="my-schedule-list">
+        ${mySchedules.map(({ dateStr, dayName, d, item, totalStaff }) => {
+          let typeTag = '';
+          const isTransfer = item.type === 'transfer' || item.type === 'special_transfer';
+          const isFree = item.type === 'free';
+          const isFixed = item.type === 'fixed' || (!isTransfer && !isFree);
+
+          if (isTransfer) {
+            typeTag = `<span class="tag-type tag-transfer" style="font-size:10px;">振替枠 (${esc(item.originDate || '')}から)</span>`;
+          } else if (isFree) {
+            typeTag = `<span class="tag-type tag-free" style="font-size:10px;">自由練習</span>`;
+          } else {
+            typeTag = `<span class="tag-type" style="background:var(--primary-light); color:var(--primary-dark); font-size:10px;">固定枠</span>`;
+          }
+
+          // 人数チェック（回答A2: 6人ジャストなら振替時に代理が必要）
+          const staffStatusBadge = totalStaff < MIN_STAFF
+            ? `<span style="color:var(--danger); font-size:11px; font-weight:bold;">⚠️ 人員不足 (${totalStaff}名)</span>`
+            : totalStaff === MIN_STAFF
+              ? `<span style="color:var(--warning); font-size:11px; font-weight:bold;">⚠️ 6名出勤中 (振替は要代理)</span>`
+              : `<span style="color:var(--primary); font-size:11px;">〇 出勤 ${totalStaff}名</span>`;
+
+          let actionButtons = '';
+          if (isFixed) {
+            actionButtons = `
+              <button class="btn-reschedule-quick" onclick="openQuickRescheduleModal('${esc(dateStr)}')">
+                ⇄ この日を振替する
+              </button>
+              <button class="btn-action" style="font-size:11px; border-color:var(--line); color:var(--text-sub);" onclick="jumpToShiftDetail('${esc(dateStr)}')">
+                詳細・特例申請
+              </button>`;
+          } else if (isTransfer) {
+            actionButtons = `
+              <button class="btn-action btn-cancel" style="font-size:12px;" onclick="cancelReschedule({ name: '${esc(currentMemberName)}', originDate: '${esc(item.originDate || '')}', type: '${esc(item.type)}' }, '${esc(dateStr)}')">
+                振替取消（${esc(item.originDate || '元の日')}に戻す）
+              </button>`;
+          } else if (isFree) {
+            actionButtons = `
+              <button class="btn-action btn-cancel" style="font-size:12px;" onclick="removeFreeShift({ name: '${esc(currentMemberName)}', originDate: '${esc(dateStr)}', type: 'free' })">
+                自由練習を削除
+              </button>`;
+          }
+
+          return `
+            <div class="my-schedule-item">
+              <div class="my-schedule-header">
+                <div class="my-schedule-date">
+                  ${d.getMonth() + 1}月${d.getDate()}日 (${esc(dayName)}) ${typeTag}
+                </div>
+                ${staffStatusBadge}
+              </div>
+              <div class="my-schedule-actions">
+                ${actionButtons}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="my-profile-banner">
+      <div class="my-profile-info">
+        <div class="my-avatar-icon">👤</div>
+        <div>
+          <div class="my-name-text">
+            ${esc(currentMemberName)}
+            <span class="my-role-badge">${roleLabel}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-sub); margin-top: 2px;">
+            固定出勤: ${myFixedDays.length > 0 ? myFixedDays.map(d => d + '曜').join('・') : '未設定'}
+            <button type="button" style="background:none; border:none; color:var(--primary); font-size:11px; font-weight:bold; cursor:pointer; text-decoration:underline; margin-left:4px;" onclick="openMyFixedDayModal()">
+              [変更/登録]
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="my-counts-badges">
+        ${countsHtml || '<span class="count-pill">振替回数: 未使用</span>'}
+      </div>
+    </div>
+    ${scheduleListHtml}
+  `;
+}
+
+function openQuickRescheduleModal(originDateStr) {
+  quickSelectedOriginDate = originDateStr;
+  quickSelectedTargetDate = '';
+
+  const originLabel = document.getElementById('quick-reschedule-origin-label');
+  const originD = new Date(originDateStr.replace(/-/g, '/'));
+  if (originLabel) {
+    originLabel.textContent = `${originD.getFullYear()}年${originD.getMonth() + 1}月${originD.getDate()}日 (${getDayName(originDateStr)})`;
+  }
+
+  const warningDiv = document.getElementById('quick-reschedule-warning');
+  const submitBtn = document.getElementById('quick-reschedule-submit-btn');
+  const members = getShiftObjectsForDate(originDateStr);
+  const totalStaff = members.length;
+  const dayName = getDayName(originDateStr);
+  const used = getRescheduleUsed(currentMemberName, dayName);
+
+  let isBlocked = false;
+  let warnMsg = '';
+
+  // 振替上限チェック
+  if (currentUserRole !== 'admin' && used >= MAX_RESCHEDULE_PER_DAY) {
+    isBlocked = true;
+    warnMsg = `【${dayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。これ以上振替できません。特別振替が必要な場合は「特例申請」を行ってください。`;
+  }
+  // 回答A2の人数制限チェック（従来通り6名未満になる場合は振替を禁止）
+  else if (currentUserRole !== 'admin' && totalStaff - 1 < MIN_STAFF) {
+    isBlocked = true;
+    warnMsg = `現在 ${originDateStr} は出勤者が ${totalStaff} 名です。振替すると ${totalStaff - 1} 名となり、最低人数（${MIN_STAFF}名）を下回るため振替できません。先に代理メンバーを立ててください。`;
+  }
+
+  if (warningDiv) {
+    if (isBlocked) {
+      warningDiv.innerHTML = `<div class="staff-alert-banner">⚠️ <strong>振替不可:</strong><br>${esc(warnMsg)}</div>`;
+    } else {
+      warningDiv.innerHTML = '';
+    }
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = isBlocked;
+  }
+
+  // 候補日リスト（今日以降の活動日をピックアップ）
+  renderQuickTargetDatesGrid(originDateStr);
+
+  const customDateInput = document.getElementById('quick-reschedule-custom-date');
+  if (customDateInput) {
+    customDateInput.value = '';
+    setMinDate('quick-reschedule-custom-date');
+  }
+
+  document.getElementById('quick-reschedule-origin-date').value = originDateStr;
+  document.getElementById('quick-selected-target-date').value = '';
+
+  const modal = document.getElementById('quick-reschedule-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function renderQuickTargetDatesGrid(originDateStr) {
+  const grid = document.getElementById('quick-target-dates-grid');
+  if (!grid) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const candidates = [];
+
+  for (let i = 1; i <= 35 && candidates.length < 16; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (d.getDay() === 0) continue; // 日曜休み
+
+    const dateStr = formatDate(d);
+    if (dateStr === originDateStr) continue; // 同じ日は除外
+
+    const members = getShiftObjectsForDate(dateStr);
+    const count = members.length;
+    const isAlreadyIn = members.some(m => normName(m.name) === normName(currentMemberName));
+    const isFull = count >= MAX_STAFF;
+
+    candidates.push({
+      dateStr,
+      d,
+      dayName: getDayName(dateStr),
+      count,
+      isAlreadyIn,
+      isFull
+    });
+  }
+
+  grid.innerHTML = candidates.map(c => {
+    const disabled = c.isAlreadyIn || c.isFull;
+    let statusText = '';
+    let statusColor = 'var(--primary)';
+
+    if (c.isAlreadyIn) {
+      statusText = '出勤予定あり';
+      statusColor = 'var(--text-sub)';
+    } else if (c.isFull) {
+      statusText = '満員 (14名)';
+      statusColor = 'var(--danger)';
+    } else {
+      statusText = `〇 空きあり (${c.count}名)`;
+    }
+
+    return `
+      <div class="target-date-card ${disabled ? 'disabled' : ''}" 
+           id="target-card-${c.dateStr}" 
+           onclick="${disabled ? '' : `selectQuickTargetDate('${c.dateStr}')`}">
+        <div class="d-name">${c.d.getMonth() + 1}/${c.d.getDate()} (${c.dayName})</div>
+        <div class="d-status" style="color: ${statusColor}; font-weight: 600;">${statusText}</div>
+      </div>`;
+  }).join('');
+}
+
+function selectQuickTargetDate(dateStr) {
+  quickSelectedTargetDate = dateStr;
+  document.getElementById('quick-selected-target-date').value = dateStr;
+
+  document.querySelectorAll('.target-date-card').forEach(el => el.classList.remove('selected'));
+  const card = document.getElementById(`target-card-${dateStr}`);
+  if (card) card.classList.add('selected');
+
+  const customInput = document.getElementById('quick-reschedule-custom-date');
+  if (customInput) customInput.value = dateStr;
+}
+
+function onQuickCustomDateSelect(val) {
+  if (!val) return;
+  quickSelectedTargetDate = val;
+  document.getElementById('quick-selected-target-date').value = val;
+
+  document.querySelectorAll('.target-date-card').forEach(el => el.classList.remove('selected'));
+  const card = document.getElementById(`target-card-${val}`);
+  if (card) card.classList.add('selected');
+}
+
+async function confirmQuickReschedule() {
+  const originDate = document.getElementById('quick-reschedule-origin-date').value;
+  const targetDate = document.getElementById('quick-selected-target-date').value;
+
+  if (!originDate) {
+    alert('振替元の日付が不正です。');
+    return;
+  }
+  if (!targetDate) {
+    alert('振替希望日を選択してください。');
+    return;
+  }
+
+  const err = validateTargetDate(targetDate, originDate, currentMemberName);
+  if (err) {
+    alert(err);
+    return;
+  }
+
+  const dayName = getDayName(originDate);
+  const used = getRescheduleUsed(currentMemberName, dayName);
+
+  if (currentUserRole !== 'admin' && used >= MAX_RESCHEDULE_PER_DAY) {
+    alert(`${dayName}曜日枠の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。`);
+    return;
+  }
+
+  const originMembers = getShiftObjectsForDate(originDate);
+  if (currentUserRole !== 'admin' && originMembers.length - 1 < MIN_STAFF) {
+    alert(`振替すると ${originDate} の出勤者が ${originMembers.length - 1} 名となり、最低人数（${MIN_STAFF}名）を下回るため振替できません。\n事前に代理メンバーを立ててください。`);
+    return;
+  }
+
+  const item = originMembers.find(m => normName(m.name) === normName(currentMemberName));
+  if (!item) {
+    alert(`振替対象のシフトが見つかりませんでした。画面を再読み込みしてください。`);
+    return;
+  }
+
+  // 振替実行
+  removeMember(originDate, item);
+  addMember(targetDate, { name: currentMemberName, originDate, type: 'transfer' });
+  updateRescheduleCount(currentMemberName, dayName, 1);
+
+  closeModal('quick-reschedule-modal');
+  await saveStorage();
+
+  const targetD = new Date(targetDate.replace(/-/g, '/'));
+  alert(`${currentMemberName}さんを ${targetD.getMonth() + 1}月${targetD.getDate()}日 (${getDayName(targetDate)}) へ振り替えました！\n（${dayName}曜枠 残り: ${Math.max(0, MAX_RESCHEDULE_PER_DAY - (used + 1))}回）`);
+}
+
+function openMyFixedDayModal() {
+  if (!currentMemberName) {
+    alert('ログインしてください。');
+    return;
+  }
+  const currentDays = OPEN_DAYS.filter(d => (masterConfig[d] || []).map(normName).includes(normName(currentMemberName)));
+
+  const checkboxes = document.querySelectorAll('input[name="my-day"]');
+  checkboxes.forEach(cb => {
+    cb.checked = currentDays.includes(cb.value);
+  });
+
+  const modal = document.getElementById('my-fixed-day-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+async function saveMyFixedDays() {
+  if (!currentMemberName) return;
+  const checkedDays = Array.from(document.querySelectorAll('input[name="my-day"]:checked')).map(cb => cb.value);
+
+  // masterConfig を更新
+  OPEN_DAYS.forEach(d => {
+    if (!masterConfig[d]) masterConfig[d] = [];
+
+    const normList = masterConfig[d].map(normName);
+    const hasMe = normList.includes(normName(currentMemberName));
+
+    if (checkedDays.includes(d)) {
+      if (!hasMe) masterConfig[d].push(currentMemberName);
+    } else {
+      if (hasMe) masterConfig[d] = masterConfig[d].filter(n => normName(n) !== normName(currentMemberName));
+    }
+  });
+
+  dirty.master = true;
+  closeModal('my-fixed-day-modal');
+  await saveStorage();
+  alert('出勤担当曜日の設定を保存しました！');
+}
+
+function jumpToShiftDetail(dateStr) {
+  switchView('shift-detail', dateStr);
+}
+
 function renderDashboard() {
+  renderMyShift();
   renderUpcomingSchedule();
   renderTransferHistory();
   renderCalendar();
@@ -1633,5 +2035,7 @@ Object.assign(window, {
   saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData,
   switchView, changeCalendarMonth, onCalendarDateClick,
   toggleExtensionMode, submitExtensionRequest, showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
-  addMasterMember, removeMasterMember
+  addMasterMember, removeMasterMember,
+  renderMyShift, openQuickRescheduleModal, selectQuickTargetDate, onQuickCustomDateSelect, confirmQuickReschedule,
+  openMyFixedDayModal, saveMyFixedDays, jumpToShiftDetail, cancelReschedule, removeFreeShift
 });
