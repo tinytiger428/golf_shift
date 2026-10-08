@@ -956,13 +956,41 @@ function renderTransferHistory() {
     });
   });
 
-  if (transfers.length === 0) {
+  // 一般ユーザーは自分の履歴のみ。幹部/adminは全員分＋承認待ちの延長申請
+  const staff = isStaffRole();
+  const mine = n => !!currentMemberName && normName(n) === normName(currentMemberName);
+  const visible = staff ? transfers : transfers.filter(t => mine(t.name));
+
+  const title = document.getElementById('transfer-history-title');
+  if (title) title.textContent = staff ? '振替状況・履歴' : '自分の振替状況・履歴';
+
+  const pendingHtml = staff
+    ? pendingRequests.filter(r => r.type === 'extension_transfer').map(req => `
+      <div class="transfer-card" style="border-color: var(--amber, #d9a441);">
+        <div class="transfer-card-header">
+          <span class="transfer-member-name">${esc(req.name)}</span>
+          <span class="request-type-badge req-special">振替日程延長申請（承認待ち）</span>
+        </div>
+        <div class="transfer-route">
+          <span class="date-pill origin">${esc(req.originalDate)}</span>
+          <span class="route-arrow">➔</span>
+          <span class="date-pill target">${esc(req.targetDate)}</span>
+        </div>
+        <div class="request-reason">理由: ${esc(req.reason)}</div>
+        <div style="display:flex; gap:6px; justify-content:flex-end; margin-top:8px;">
+          <button class="btn-action btn-cancel" data-req-action="reject" data-id="${Number(req.id)}">却下</button>
+          <button class="btn-main" style="padding: 6px 12px; font-size:12px; flex:initial;" data-req-action="approve" data-id="${Number(req.id)}">承認</button>
+        </div>
+      </div>`).join('')
+    : '';
+
+  if (visible.length === 0 && !pendingHtml) {
     container.innerHTML = `<div class="empty-state">現在、振替の履歴はありません</div>`;
     return;
   }
 
-  const recent = transfers.slice(-5).reverse();
-  container.innerHTML = recent.map(t => {
+  const recent = visible.slice(-5).reverse();
+  container.innerHTML = pendingHtml + recent.map(t => {
     return `
       <div class="transfer-card">
         <div class="transfer-card-header">
@@ -1581,6 +1609,12 @@ function openRequestsModal() {
   document.getElementById('requests-modal').style.display = 'flex';
 }
 
+// 申請一覧モーダルが開いているときだけ再描画（履歴パネルから操作した場合は開かない）
+function refreshRequestsView() {
+  const m = document.getElementById('requests-modal');
+  if (m && m.style.display === 'flex') openRequestsModal();
+}
+
 function approveRequest(reqId) {
   if (!requireStaff()) return;
   const reqIndex = pendingRequests.findIndex(r => r.id === reqId);
@@ -1595,7 +1629,7 @@ function approveRequest(reqId) {
     dirty.reqs.add(req.id);
     pendingRequests.splice(reqIndex, 1);
     saveStorage();
-    openRequestsModal();
+    refreshRequestsView();
     return;
   }
 
@@ -1625,7 +1659,7 @@ function approveRequest(reqId) {
   dirty.reqs.add(req.id);
     pendingRequests.splice(reqIndex, 1);
   saveStorage();
-  openRequestsModal();
+  refreshRequestsView();
 }
 
 function rejectRequest(reqId) {
@@ -1634,7 +1668,7 @@ function rejectRequest(reqId) {
     dirty.reqs.add(reqId);
     pendingRequests = pendingRequests.filter(r => r.id !== reqId);
     saveStorage();
-    openRequestsModal();
+    refreshRequestsView();
   }
 }
 
@@ -1972,6 +2006,13 @@ if (memberListEl) {
 const historyListEl = document.getElementById('transfer-history-list');
 if (historyListEl) {
   historyListEl.addEventListener('click', e => {
+    const reqBtn = e.target.closest('button[data-req-action]');
+    if (reqBtn) {
+      const id = Number(reqBtn.dataset.id);
+      if (reqBtn.dataset.reqAction === 'approve') approveRequest(id);
+      else if (reqBtn.dataset.reqAction === 'reject') rejectRequest(id);
+      return;
+    }
     const btn = e.target.closest('button[data-hist-cancel]');
     if (!btn) return;
     const { name, origin, target } = btn.dataset;
