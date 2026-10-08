@@ -250,13 +250,26 @@ document.addEventListener('click', () => {
   if (menu) menu.classList.remove('show');
 });
 
+// ログインID → Firebaseのメールアドレス。
+// 新規登録者は usernames/{ユーザー名} に本物のメールを保存している。無ければ旧方式（仮ドメイン）。
+async function resolveLoginEmail(id) {
+  if (id.includes('@')) return id; // メールアドレスを直接入力した場合
+  try {
+    const snap = await getDoc(doc(db, 'usernames', id));
+    if (snap.exists() && snap.data().email) return snap.data().email;
+  } catch (e) {
+    console.warn('Username lookup failed:', e);
+  }
+  return `${id}@${LOGIN_EMAIL_DOMAIN}`;
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const id = document.getElementById('login-id').value.trim().toLowerCase();
   const pass = document.getElementById('login-pass').value;
   const errorDiv = document.getElementById('login-error');
   try {
-    await signInWithEmailAndPassword(auth, `${id}@${LOGIN_EMAIL_DOMAIN}`, pass);
+    await signInWithEmailAndPassword(auth, await resolveLoginEmail(id), pass);
     errorDiv.style.display = 'none';
   } catch (err) {
     errorDiv.style.display = 'block';

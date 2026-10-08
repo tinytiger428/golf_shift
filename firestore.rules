@@ -56,7 +56,10 @@ service cloud.firestore {
 
     // ユーザーネーム重複防止（新規作成のみ・上書き不可）
     match /usernames/{username} {
-      allow read: if signedIn();
+      // get（1件取得）のみ未ログインでも可: ログイン時にユーザー名からメールを引くため。
+      // list（一覧取得）はログイン済みのみ。
+      allow get: if true;
+      allow list: if signedIn();
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && username.matches('^[a-z0-9_]{3,20}$');
@@ -64,13 +67,54 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // シフト・振替回数（ログイン済みなら閲覧・更新可。ユーザーは自分の振替のみアプリ側で制限）
+    // 自分のフルネーム（アプリ側のnormNameで正規化済みの値）
+    function myName() {
+      return userDoc().fullName;
+    }
+
+    // シフト: 閲覧はログイン済み。書き込みは形式を検証し、
+    // 一般ユーザーは「自分の名前」を removed に出し入れする変更のみ許可。削除は staff のみ。
+    // （added 内の名前までは Rules で検証できないため、そこはアプリ側の制限に依存）
+    function validShift() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['removed', 'added'])
+        && d.removed is list && d.removed.size() <= 50
+        && d.added is list && d.added.size() <= 50;
+    }
+
+    function shiftRemovedChangeIsMine() {
+      let before = resource == null ? [] : resource.data.get('removed', []);
+      let after = request.resource.data.removed;
+      return after.toSet().difference(before.toSet()).hasOnly([myName()])
+        && before.toSet().difference(after.toSet()).hasOnly([myName()]);
+    }
+
     match /shifts/{date} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow create, update: if signedIn() && hasUserDoc()
+        && date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && validShift()
+        && (isStaff() || shiftRemovedChangeIsMine());
+      allow delete: if isStaff();
+    }
+
+    // 振替回数: 一般ユーザーは自分の名前のカウントのみ変更可。削除は staff のみ。
+    function validCounts() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['c']) && d.c is map;
+    }
+
+    function countsChangeIsMine() {
+      let before = resource == null ? {} : resource.data.get('c', {});
+      return request.resource.data.c.diff(before).affectedKeys().hasOnly([myName()]);
     }
 
     match /counts/{day} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow create, update: if signedIn() && hasUserDoc()
+        && validCounts()
+        && (isStaff() || countsChangeIsMine());
+      allow delete: if isStaff();
     }
 
     // 固定メンバー設定
@@ -81,7 +125,18 @@ service cloud.firestore {
 
     // 特例申請: 作成は本人、閲覧・承認・却下は admin / 幹部
     match /requests/{id} {
-      allow create: if signedIn();
+      allow create: if signedIn() && hasUserDoc()
+        && id.matches('^[0-9]{10,16}$')
+        && request.resource.data.keys().hasOnly(['id', 'name', 'originalDate', 'type', 'reason', 'targetDate', 'createdAt'])
+        && request.resource.data.id is number
+        && request.resource.data.name == myName()
+        && request.resource.data.type in ['absent', 'special_transfer']
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 200
+        && request.resource.data.originalDate is string
+        && request.resource.data.targetDate is string
+        && request.resource.data.createdAt is string;
       allow read, update, delete: if isStaff();
     }
   }
