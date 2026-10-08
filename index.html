@@ -768,12 +768,21 @@
     <div class="form-group">
       <label>振替希望日</label>
       <input type="date" id="reschedule-date-input">
+      <div class="form-hint" id="reschedule-range-hint"></div>
+      <div id="reschedule-date-error" style="display:none; color:#c0392b; font-size:12px; font-weight:600; margin-top:6px;"></div>
+    </div>
+    <div class="form-group" id="reschedule-ext-group" style="display:none;">
+      <label>延長が必要な理由</label>
+      <textarea id="reschedule-ext-reason" rows="3" maxlength="200" placeholder="期間外の日程が必要な理由を入力してください"></textarea>
+      <div class="form-hint">幹部・管理者の承認後に振替が確定します</div>
     </div>
     <input type="hidden" id="reschedule-member-name">
     <input type="hidden" id="reschedule-member-index">
+    <button type="button" class="link-btn" id="reschedule-ext-toggle" onclick="toggleExtensionMode()">振替日程延長</button>
     <div class="modal-actions">
       <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('reschedule-modal')">キャンセル</button>
-      <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="executeReschedule()">振替を確定する</button>
+      <button class="btn-main" id="reschedule-confirm" style="padding: 8px 16px; flex: initial;" onclick="executeReschedule()">振替を確定する</button>
+      <button class="btn-main" id="reschedule-ext-submit" style="padding: 8px 16px; flex: initial; display:none;" onclick="submitExtensionRequest()">延長を申請する</button>
     </div>
   </div>
 </div>

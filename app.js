@@ -1055,6 +1055,41 @@ function validateTargetDate(targetDate, originDate, name) {
   return '';
 }
 
+/* ---- 振替可能日程ルール ----
+   ・振替元の前後 TRANSFER_WINDOW_DAYS 日以内（例: 10/21 → 10/15〜10/27）
+   ・自分の固定曜日以外の日
+   上記を満たせば自動確定。期間を超える日は「振替日程延長申請」で幹部/adminの承認が必要。 */
+const TRANSFER_WINDOW_DAYS = 6;
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr.replace(/-/g, '/'));
+  d.setDate(d.getDate() + n);
+  return formatDate(d);
+}
+
+function getTransferWindow(originDate) {
+  return { min: addDays(originDate, -TRANSFER_WINDOW_DAYS), max: addDays(originDate, TRANSFER_WINDOW_DAYS) };
+}
+
+function isWithinTransferWindow(targetDate, originDate) {
+  const w = getTransferWindow(originDate);
+  return targetDate >= w.min && targetDate <= w.max;
+}
+
+function getFixedDays(name) {
+  const n = normName(name);
+  return OPEN_DAYS.filter(d => (masterConfig[d] || []).some(m => normName(m) === n));
+}
+
+// 自分の固定曜日への振替ならメッセージを返す
+function checkNotFixedDay(targetDate, name) {
+  const days = getFixedDays(name);
+  if (days.includes(getDayName(targetDate))) {
+    return `振替できません。曜日を確認してください。\n（${name}さんの固定曜日: ${days.join('・')}）`;
+  }
+  return '';
+}
+
 function setMinDate(inputId) {
   document.getElementById(inputId).min = formatDate(new Date());
 }
@@ -1155,7 +1190,9 @@ function openRequestsModal() {
       const isAbsent = req.type === 'absent';
       const badge = isAbsent
         ? '<span class="request-type-badge req-absent">特例欠席</span>'
-        : '<span class="request-type-badge req-special">特別振替 (回数なし)</span>';
+        : req.type === 'extension_transfer'
+          ? '<span class="request-type-badge req-special">振替日程延長</span>'
+          : '<span class="request-type-badge req-special">特別振替 (回数なし)</span>';
       const id = Number(req.id);
       return `
         <div class="request-card">
@@ -1203,6 +1240,17 @@ function approveRequest(reqId) {
     removeMember(req.originalDate, item);
     addMember(req.targetDate, { name: req.name, originDate: req.originalDate, type: 'special_transfer' });
     alert(`${req.name}さんの特別振替（${req.originalDate} ➔ ${req.targetDate}）を承認しました。※振替回数は消費されません。`);
+  } else if (req.type === 'extension_transfer') {
+    const err = validateTargetDate(req.targetDate, req.originalDate, req.name) || checkNotFixedDay(req.targetDate, req.name);
+    if (err) { alert(`振替日程延長を実行できません：\n${err}`); return; }
+
+    // 通常振替として確定（振替回数を消費・履歴から取り消し可能）
+    removeMember(req.originalDate, item);
+    addMember(req.targetDate, { name: req.name, originDate: req.originalDate, type: 'transfer' });
+    updateRescheduleCount(req.name, getDayName(req.originalDate), 1);
+    alert(`${req.name}さんの振替日程延長（${req.originalDate} ➔ ${req.targetDate}）を承認し、振替を確定しました。`);
+  } else {
+    return;
   }
 
   dirty.reqs.add(req.id);
@@ -1241,6 +1289,11 @@ function openRescheduleModal(name, index) {
   document.getElementById('reschedule-member-index').value = index;
   document.getElementById('reschedule-date-input').value = selectedDateStr;
   setMinDate('reschedule-date-input');
+  setExtensionMode(false);
+  const w = getTransferWindow(selectedDateStr);
+  const hint = document.getElementById('reschedule-range-hint');
+  if (hint) hint.textContent = `振替可能期間: ${w.min} 〜 ${w.max}（ご自身の固定曜日を除く）`;
+  updateRescheduleDateMessage();
   document.getElementById('reschedule-modal').style.display = 'flex';
 }
 
@@ -1266,6 +1319,13 @@ function executeReschedule() {
   const err = validateTargetDate(targetDate, selectedDateStr, name);
   if (err) { alert(err); return; }
 
+  const fixedErr = checkNotFixedDay(targetDate, name);
+  if (fixedErr) { alert(fixedErr); return; }
+  if (!isWithinTransferWindow(targetDate, selectedDateStr)) {
+    alert('振替可能期間外です。期間内の日程を選ぶか、「振替日程延長」から申請してください。');
+    return;
+  }
+
   const dayName = getDayName(selectedDateStr);
   const used = getRescheduleUsed(name, dayName);
   if (currentUserRole !== 'admin' && used >= MAX_RESCHEDULE_PER_DAY) {
@@ -1286,6 +1346,106 @@ function executeReschedule() {
   closeModal('reschedule-modal');
   saveStorage();
   alert(`${name}さんを ${targetDate} へ振替しました。\n（${dayName}曜枠 振替残り: ${Math.max(0, MAX_RESCHEDULE_PER_DAY - (used + 1))}回）`);
+}
+
+// 日付を選んだ時点で、ルール違反なら赤文字で理由を表示（OKボタンも押せなくする）
+function updateRescheduleDateMessage() {
+  const msgEl = document.getElementById('reschedule-date-error');
+  if (!msgEl) return;
+  const modal = document.getElementById('reschedule-modal');
+  const extension = !!(modal && modal.dataset.extension === '1');
+  const name = document.getElementById('reschedule-member-name').value;
+  const target = document.getElementById('reschedule-date-input').value;
+
+  let msg = '';
+  if (target && target !== selectedDateStr) {
+    msg = validateTargetDate(target, selectedDateStr, name) || checkNotFixedDay(target, name);
+    if (!msg) {
+      const inWindow = isWithinTransferWindow(target, selectedDateStr);
+      if (!extension && !inWindow) msg = '振替可能期間外です。期間内の日程を選ぶか、「振替日程延長」から申請してください。';
+      else if (extension && inWindow) msg = '振替可能期間内の日程です。「通常振替に戻る」から振替してください。';
+    }
+  }
+  msgEl.textContent = msg;
+  msgEl.style.display = msg ? 'block' : 'none';
+  ['reschedule-confirm', 'reschedule-ext-submit'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = !!msg;
+  });
+}
+
+const rescheduleDateInput = document.getElementById('reschedule-date-input');
+if (rescheduleDateInput) {
+  rescheduleDateInput.addEventListener('input', updateRescheduleDateMessage);
+  rescheduleDateInput.addEventListener('change', updateRescheduleDateMessage);
+}
+
+/* ---- 振替日程延長申請（振替可能期間外への振替。幹部/adminの承認で確定） ---- */
+function setExtensionMode(on) {
+  const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+  show('reschedule-ext-group', on);
+  show('reschedule-ext-submit', on);
+  show('reschedule-confirm', !on);
+  const toggle = document.getElementById('reschedule-ext-toggle');
+  if (toggle) toggle.textContent = on ? '通常振替に戻る' : '振替日程延長';
+  const reason = document.getElementById('reschedule-ext-reason');
+  if (reason && !on) reason.value = '';
+  const modal = document.getElementById('reschedule-modal');
+  if (modal) modal.dataset.extension = on ? '1' : '';
+  updateRescheduleDateMessage();
+}
+
+function toggleExtensionMode() {
+  const modal = document.getElementById('reschedule-modal');
+  setExtensionMode(!(modal && modal.dataset.extension === '1'));
+}
+
+function submitExtensionRequest() {
+  const name = document.getElementById('reschedule-member-name').value;
+  const index = parseInt(document.getElementById('reschedule-member-index').value, 10);
+  const targetDate = document.getElementById('reschedule-date-input').value;
+  const reason = document.getElementById('reschedule-ext-reason').value.trim();
+
+  if (!canOperateOn(name)) {
+    alert('ご自身のシフトのみ申請できます。');
+    closeModal('reschedule-modal');
+    return;
+  }
+  const item = getShiftObjectsForDate(selectedDateStr)[index];
+  if (!item || item.name !== name || item.type !== 'fixed') {
+    alert('対象のメンバー情報が変わっています。画面を確認してやり直してください。');
+    closeModal('reschedule-modal');
+    return;
+  }
+
+  const err = validateTargetDate(targetDate, selectedDateStr, name) || checkNotFixedDay(targetDate, name);
+  if (err) { alert(err); return; }
+  if (isWithinTransferWindow(targetDate, selectedDateStr)) {
+    alert('この日程は振替可能期間内です。「振替を確定する」で振替してください。');
+    return;
+  }
+  if (!reason) { alert('延長が必要な理由を入力してください。'); return; }
+  if (reason.length > 200) { alert('理由は200文字以内で入力してください。'); return; }
+
+  const dayName = getDayName(selectedDateStr);
+  if (currentUserRole !== 'admin' && getRescheduleUsed(name, dayName) >= MAX_RESCHEDULE_PER_DAY) {
+    alert(`${dayName}曜日枠の振替上限に達しています。`);
+    return;
+  }
+
+  const reqObj = {
+    id: Date.now(),
+    name,
+    originalDate: selectedDateStr,
+    type: 'extension_transfer',
+    reason,
+    targetDate,
+    createdAt: new Date().toLocaleString('ja-JP')
+  };
+  setDoc(doc(db, 'requests', String(reqObj.id)), reqObj)
+    .catch(() => alert('申請の送信に失敗しました。もう一度お試しください。'));
+  closeModal('reschedule-modal');
+  alert('振替日程延長を申請しました。幹部・管理者の承認後に振替が確定します。');
 }
 
 async function cancelReschedule(item, targetDate = selectedDateStr) {
@@ -1472,6 +1632,6 @@ Object.assign(window, {
   openDataModal, changeWeek, addFreeShift, toggleReqTypeUI, closeModal, submitSpecialRequest,
   saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData,
   switchView, changeCalendarMonth, onCalendarDateClick,
-  showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
+  toggleExtensionMode, submitExtensionRequest, showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
   addMasterMember, removeMasterMember
 });

@@ -102,10 +102,10 @@ service cloud.firestore {
 
     match /shifts/{date} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && hasUserDoc()
+      allow create, update: if signedIn()
         && date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && validShift()
-        && (isStaff() || shiftRemovedChangeIsMine());
+        && (isStaff() || (hasUserDoc() && shiftRemovedChangeIsMine()));
       allow delete: if isStaff();
     }
 
@@ -122,9 +122,9 @@ service cloud.firestore {
 
     match /counts/{day} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && hasUserDoc()
+      allow create, update: if signedIn()
         && validCounts()
-        && (isStaff() || countsChangeIsMine());
+        && (isStaff() || (hasUserDoc() && countsChangeIsMine()));
       allow delete: if isStaff();
     }
 
@@ -141,7 +141,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['id', 'name', 'originalDate', 'type', 'reason', 'targetDate', 'createdAt'])
         && request.resource.data.id is number
         && request.resource.data.name == myName()
-        && request.resource.data.type in ['absent', 'special_transfer']
+        && request.resource.data.type in ['absent', 'special_transfer', 'extension_transfer']
         && request.resource.data.reason is string
         && request.resource.data.reason.size() > 0
         && request.resource.data.reason.size() <= 200
