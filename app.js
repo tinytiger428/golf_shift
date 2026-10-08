@@ -426,7 +426,7 @@ function updateRoleUI() {
   if (headerUserInfo) {
     if (currentMemberName) {
       const roleStr = ROLE_LABELS[currentUserRole] || 'ユーザー';
-      headerUserInfo.innerHTML = `👤 <strong>${esc(currentMemberName)}</strong> さん（${roleStr}） | 曜日ごとに5回まで振替可能`;
+      headerUserInfo.innerHTML = `<strong>${esc(currentMemberName)}</strong> さん（${roleStr}）| 曜日ごとに5回まで振替可能`;
     } else {
       headerUserInfo.textContent = '曜日ごとに1人5回まで振替可能';
     }
