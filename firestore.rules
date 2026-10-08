@@ -27,6 +27,13 @@ service cloud.firestore {
       return isAdmin() || (signedIn() && hasUserDoc() && userDoc().role == 'executive');
     }
 
+    // 対象ユーザーが admin か（幹部はadminを変更・削除できない）
+    function targetIsAdmin(uid) {
+      return exists(/databases/$(database)/documents/admins/$(uid)) ||
+        (exists(/databases/$(database)/documents/users/$(uid)) &&
+         get(/databases/$(database)/documents/users/$(uid)).data.role == 'admin');
+    }
+
     // 旧admins管理（読み取りのみ。書き込みはコンソールから）
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
@@ -35,7 +42,7 @@ service cloud.firestore {
 
     // ユーザープロフィール
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
 
       // 新規登録: 自分のドキュメントのみ、権限は必ず user
       allow create: if signedIn()
@@ -49,9 +56,13 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.username.matches('^[a-z0-9_]{3,20}$');
 
-      // 権限の変更は admin のみ
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      // 権限の変更: admin は自由。幹部は admin 以外のユーザーの role を user / executive に変更するのみ
+      allow update: if isAdmin()
+        || (isStaff() && !targetIsAdmin(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+            && request.resource.data.role in ['user', 'executive']);
+      // 削除: admin は自由。幹部は admin 以外のみ
+      allow delete: if isAdmin() || (isStaff() && !targetIsAdmin(uid));
     }
 
     // ユーザーネーム重複防止（新規作成のみ・上書き不可）
@@ -64,7 +75,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && username.matches('^[a-z0-9_]{3,20}$');
       allow update: if false;
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isStaff() && !targetIsAdmin(resource.data.uid));
     }
 
     // 自分のフルネーム（アプリ側のnormNameで正規化済みの値）
@@ -120,7 +131,7 @@ service cloud.firestore {
     // 固定メンバー設定
     match /config/{docId} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if isStaff();
     }
 
     // 特例申請: 作成は本人、閲覧・承認・却下は admin / 幹部

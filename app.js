@@ -232,6 +232,18 @@ function askConfirm(message) {
 }
 
 /* ============ 認証・メニュー ============ */
+function isStaffRole() {
+  return currentUserRole === 'admin' || currentUserRole === 'executive';
+}
+
+function requireStaff() {
+  if (!isStaffRole()) {
+    alert('管理者または幹部のみ実行できます。');
+    return false;
+  }
+  return true;
+}
+
 function requireAdmin() {
   if (currentUserRole !== 'admin') {
     alert('管理者のみ実行できます。');
@@ -413,9 +425,10 @@ function updateRoleUI() {
   const itemRoles = document.getElementById('item-roles');
   const itemMaster = document.getElementById('item-master');
   const itemData = document.getElementById('item-data');
-  if (itemRoles) itemRoles.style.display = isAdmin ? 'block' : 'none';
-  if (itemMaster) itemMaster.style.display = isAdmin ? 'block' : 'none';
-  if (itemData) itemData.style.display = isAdmin ? 'block' : 'none';
+  // 幹部もadminと同じメニューを表示（データ管理の操作・adminへの権限変更は各処理で管理者のみに制限）
+  if (itemRoles) itemRoles.style.display = hasMenu ? 'block' : 'none';
+  if (itemMaster) itemMaster.style.display = hasMenu ? 'block' : 'none';
+  if (itemData) itemData.style.display = hasMenu ? 'block' : 'none';
 }
 
 function closeModal(id) {
@@ -539,6 +552,7 @@ function computeRole(userData) {
 function openRolesModal() {
   const menu = document.getElementById('dropdown-menu');
   if (menu) menu.classList.remove('show');
+  if (!requireStaff()) return;
   renderRolesList();
   const modal = document.getElementById('roles-modal');
   if (modal) modal.style.display = 'flex';
@@ -558,14 +572,17 @@ function renderRolesList() {
   listDiv.innerHTML = sorted.map(u => {
     const role = computeRole(u);
     const detailId = `role-detail-${u.uid}`;
+    const isExecViewer = currentUserRole !== 'admin';
+    const lockRole = isExecViewer && role === 'admin';  // 幹部はadminの権限を変更できない
+    const adminOpt = isExecViewer && role !== 'admin' ? 'disabled' : ''; // 幹部はadminに昇格できない
     return `
       <div class="role-user-card">
         <div class="role-user-row">
           <button class="role-user-name" onclick="toggleUserDetail('${detailId}')">
             ${esc(u.fullName || '（名前未設定）')}
           </button>
-          <select class="role-select" onchange="changeUserRole('${esc(u.uid)}', this.value)">
-            <option value="admin" ${role === 'admin' ? 'selected' : ''}>admin</option>
+          <select class="role-select" ${lockRole ? 'disabled' : ''} onchange="changeUserRole('${esc(u.uid)}', this.value)">
+            <option value="admin" ${role === 'admin' ? 'selected' : ''} ${adminOpt}>admin</option>
             <option value="executive" ${role === 'executive' ? 'selected' : ''}>幹部</option>
             <option value="user" ${role === 'user' ? 'selected' : ''}>ユーザー</option>
           </select>
@@ -577,7 +594,7 @@ function renderRolesList() {
             <dt>ユーザー名</dt><dd>${esc(u.username || '-')}</dd>
           </dl>
           ${u.email ? `<button class="btn-action" style="font-size:11px;" onclick="sendPasswordResetEmailForUser('${esc(u.email)}')">パスワード再設定メールを送信</button>` : ''}
-          <button class="btn-action" style="font-size:11px; color:#c0392b;" onclick="deleteUserAccount('${esc(u.uid)}')">このユーザーを削除</button>
+          ${lockRole ? '' : `<button class="btn-action" style="font-size:11px; color:#c0392b;" onclick="deleteUserAccount('${esc(u.uid)}')">このユーザーを削除</button>`}
         </div>
       </div>`;
   }).join('');
@@ -590,6 +607,15 @@ function toggleUserDetail(id) {
 
 async function changeUserRole(uid, newRole) {
   if (!ROLE_LABELS[newRole]) return;
+  if (!requireStaff()) return;
+  if (currentUserRole !== 'admin') {
+    const target = (allUsers || []).find(x => x.uid === uid);
+    if (newRole === 'admin' || (target && computeRole(target) === 'admin')) {
+      alert('adminへの権限変更・adminの権限変更は管理者のみ実行できます。');
+      renderRolesList();
+      return;
+    }
+  }
   try {
     await setDoc(doc(db, 'users', uid), { role: newRole }, { merge: true });
     alert(`権限を「${ROLE_LABELS[newRole]}」に変更しました。`);
@@ -601,9 +627,13 @@ async function changeUserRole(uid, newRole) {
 }
 
 async function deleteUserAccount(uid) {
-  if (!requireAdmin()) return;
+  if (!requireStaff()) return;
   const u = (allUsers || []).find(x => x.uid === uid);
   if (!u) return;
+  if (currentUserRole !== 'admin' && computeRole(u) === 'admin') {
+    alert('adminの削除は管理者のみ実行できます。');
+    return;
+  }
   if (auth.currentUser && auth.currentUser.uid === uid) {
     alert('自分自身は削除できません。');
     return;
@@ -639,6 +669,7 @@ let editingMasterConfig = {};
 function openMasterConfig() {
   const menu = document.getElementById('dropdown-menu');
   if (menu) menu.classList.remove('show');
+  if (!requireStaff()) return;
   editingMasterConfig = clone(masterConfig);
   renderMasterConfigInputs();
   const modal = document.getElementById('master-modal');
@@ -708,6 +739,7 @@ function removeMasterMember(day, idx) {
 }
 
 function saveMasterConfig() {
+  if (!requireStaff()) return;
   masterConfig = sanitizeMaster(editingMasterConfig);
   dirty.master = true;
   closeModal('master-modal');
@@ -1113,7 +1145,7 @@ function submitSpecialRequest() {
 /* ============ 申請管理（管理者） ============ */
 function openRequestsModal() {
   document.getElementById('dropdown-menu').classList.remove('show');
-  if (!requireAdmin()) return;
+  if (!requireStaff()) return;
 
   const listDiv = document.getElementById('requests-list');
   if (pendingRequests.length === 0) {
@@ -1144,7 +1176,7 @@ function openRequestsModal() {
 }
 
 function approveRequest(reqId) {
-  if (!requireAdmin()) return;
+  if (!requireStaff()) return;
   const reqIndex = pendingRequests.findIndex(r => r.id === reqId);
   if (reqIndex === -1) return;
   const req = pendingRequests[reqIndex];
@@ -1180,7 +1212,7 @@ function approveRequest(reqId) {
 }
 
 function rejectRequest(reqId) {
-  if (!requireAdmin()) return;
+  if (!requireStaff()) return;
   if (confirm('この申請を却下しますか？')) {
     dirty.reqs.add(reqId);
     pendingRequests = pendingRequests.filter(r => r.id !== reqId);
