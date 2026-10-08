@@ -939,10 +939,8 @@ function switchView(viewName, targetDateStr) {
   }
 }
 
-function renderTransferHistory() {
-  const container = document.getElementById('transfer-history-list');
-  if (!container) return;
-
+// 履歴に出す振替の一覧（一般ユーザーは自分の分のみ。幹部/adminは全員分）
+function getVisibleTransfers() {
   const transfers = [];
   Object.entries(overrides).forEach(([dateStr, obj]) => {
     (obj.added || []).forEach(item => {
@@ -955,11 +953,67 @@ function renderTransferHistory() {
       }
     });
   });
-
-  // 一般ユーザーは自分の履歴のみ。幹部/adminは全員分＋承認待ちの延長申請
-  const staff = isStaffRole();
   const mine = n => !!currentMemberName && normName(n) === normName(currentMemberName);
-  const visible = staff ? transfers : transfers.filter(t => mine(t.name));
+  return isStaffRole() ? transfers : transfers.filter(t => mine(t.name));
+}
+
+function transferCardHtml(t) {
+  return `
+      <div class="transfer-card">
+        <div class="transfer-card-header">
+          <span class="transfer-member-name">${esc(t.name)}</span>
+          ${canOperateOn(t.name) ? `<button class="btn-action btn-cancel" data-hist-cancel data-name="${esc(t.name)}" data-origin="${esc(t.originDate)}" data-target="${esc(t.targetDate)}">取消</button>` : ''}
+        </div>
+        <div class="transfer-route">
+          <span class="date-pill origin">${esc(t.originDate)}</span>
+          <span class="route-arrow">➔</span>
+          <span class="date-pill target">${esc(t.targetDate)}</span>
+        </div>
+      </div>`;
+}
+
+// すべての履歴を月ごとに区切って表示（振替先の日付の月・新しい順）
+function renderAllHistory() {
+  const container = document.getElementById('all-history-list');
+  if (!container) return;
+  const list = getVisibleTransfers().sort((a, b) => b.targetDate.localeCompare(a.targetDate));
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty-state">現在、振替の履歴はありません</div>';
+    return;
+  }
+  const byMonth = new Map();
+  list.forEach(t => {
+    const key = t.targetDate.slice(0, 7);
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key).push(t);
+  });
+  container.innerHTML = [...byMonth.entries()].map(([key, items]) => {
+    const [y, m] = key.split('-');
+    return `
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700; font-size:14px; color:var(--green-deep); padding:6px 0; border-bottom:2px solid var(--line); margin-bottom:8px;">
+          ${y}年${Number(m)}月 <span style="font-size:12px; color:var(--ink-sub); font-weight:600;">（${items.length}件）</span>
+        </div>
+        <div class="transfer-list">${items.map(transferCardHtml).join('')}</div>
+      </div>`;
+  }).join('');
+}
+
+function openAllHistory() {
+  renderAllHistory();
+  document.getElementById('all-history-modal').style.display = 'flex';
+}
+
+function renderTransferHistory() {
+  const container = document.getElementById('transfer-history-list');
+  if (!container) return;
+
+  const staff = isStaffRole();
+  const visible = getVisibleTransfers();
+
+  // 「すべて見る」画面を開いている間は、そちらも最新に更新
+  const allModal = document.getElementById('all-history-modal');
+  if (allModal && allModal.style.display === 'flex') renderAllHistory();
 
   const title = document.getElementById('transfer-history-title');
   if (title) title.textContent = staff ? '振替状況・履歴' : '自分の振替状況・履歴';
@@ -990,20 +1044,10 @@ function renderTransferHistory() {
   }
 
   const recent = visible.slice(-5).reverse();
-  container.innerHTML = pendingHtml + recent.map(t => {
-    return `
-      <div class="transfer-card">
-        <div class="transfer-card-header">
-          <span class="transfer-member-name">${esc(t.name)}</span>
-          ${canOperateOn(t.name) ? `<button class="btn-action btn-cancel" data-hist-cancel data-name="${esc(t.name)}" data-origin="${esc(t.originDate)}" data-target="${esc(t.targetDate)}">取消</button>` : ''}
-        </div>
-        <div class="transfer-route">
-          <span class="date-pill origin">${esc(t.originDate)}</span>
-          <span class="route-arrow">➔</span>
-          <span class="date-pill target">${esc(t.targetDate)}</span>
-        </div>
-      </div>`;
-  }).join('');
+  const moreBtn = visible.length > 5
+    ? `<button type="button" class="link-btn" onclick="openAllHistory()">すべて見る（${visible.length}件・月別）</button>`
+    : '';
+  container.innerHTML = pendingHtml + recent.map(transferCardHtml).join('') + moreBtn;
 }
 
 /* ============ マイシフト・自分の振替 ============ */
@@ -2003,6 +2047,16 @@ if (memberListEl) {
   });
 }
 
+const allHistoryEl = document.getElementById('all-history-list');
+if (allHistoryEl) {
+  allHistoryEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-hist-cancel]');
+    if (!btn) return;
+    const { name, origin, target } = btn.dataset;
+    cancelReschedule({ name, originDate: origin, type: 'transfer' }, target);
+  });
+}
+
 const historyListEl = document.getElementById('transfer-history-list');
 if (historyListEl) {
   historyListEl.addEventListener('click', e => {
@@ -2042,7 +2096,7 @@ Object.assign(window, {
   openDataModal, changeWeek, addFreeShift, toggleReqTypeUI, closeModal, submitSpecialRequest,
   saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData,
   switchView, changeCalendarMonth, onCalendarDateClick,
-  toggleExtensionMode, submitExtensionRequest, showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
+  toggleExtensionMode, submitExtensionRequest, openAllHistory, showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
   addMasterMember, removeMasterMember,
   renderMyShift, openQuickRescheduleModal, selectQuickTargetDate, onQuickCustomDateSelect, confirmQuickReschedule,
   openMyFixedDayModal, saveMyFixedDays, jumpToShiftDetail, cancelReschedule, removeFreeShift
