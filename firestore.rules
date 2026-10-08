@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // 旧方式（admins/{uid}）も admin として扱う
+    function isAdmin() {
+      return signedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (hasUserDoc() && userDoc().role == 'admin')
+      );
+    }
+
+    // admin または 幹部
+    function isStaff() {
+      return isAdmin() || (signedIn() && hasUserDoc() && userDoc().role == 'executive');
+    }
+
+    // 旧admins管理（読み取りのみ。書き込みはコンソールから）
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ユーザープロフィール
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // 新規登録: 自分のドキュメントのみ、権限は必ず user
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['fullName', 'email', 'username', 'role', 'createdAt'])
+        && request.resource.data.role == 'user'
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() > 0
+        && request.resource.data.fullName.size() <= 30
+        && request.resource.data.email is string
+        && request.resource.data.username is string
+        && request.resource.data.username.matches('^[a-z0-9_]{3,20}$');
+
+      // 権限の変更は admin のみ
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ユーザーネーム重複防止（新規作成のみ・上書き不可）
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && username.matches('^[a-z0-9_]{3,20}$');
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // シフト・振替回数（ログイン済みなら閲覧・更新可。ユーザーは自分の振替のみアプリ側で制限）
+    match /shifts/{date} {
+      allow read, write: if signedIn();
+    }
+
+    match /counts/{day} {
+      allow read, write: if signedIn();
+    }
+
+    // 固定メンバー設定
+    match /config/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // 特例申請: 作成は本人、閲覧・承認・却下は admin / 幹部
+    match /requests/{id} {
+      allow create: if signedIn();
+      allow read, update, delete: if isStaff();
+    }
+  }
+}

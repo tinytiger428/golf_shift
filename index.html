@@ -395,6 +395,120 @@
       border: 1px solid #eee;
       margin: 6px 0;
     }
+
+    /* ---------- ホーム（ダッシュボード） ---------- */
+    .dashboard-container { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; padding: 14px; }
+
+    .dashboard-section { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .section-header h3 { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.06em; color: var(--green-deep); }
+
+    .upcoming-list, .transfer-list { display: flex; flex-direction: column; gap: 8px; }
+    .upcoming-card {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer;
+      padding: 10px 12px; background: #fafcfa; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 4px 10px 10px 4px;
+    }
+    .upcoming-card:active { background: var(--green-tint); }
+    .upcoming-date { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .upcoming-detail { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
+    .upcoming-badge {
+      flex: none; white-space: nowrap; padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-tint);
+    }
+    .upcoming-badge.transfer { color: var(--amber); background: var(--amber-tint); }
+    .upcoming-badge.special { color: var(--sky); background: var(--sky-tint); }
+
+    .transfer-card { padding: 10px 12px; background: #fafcfa; border: 1px solid var(--line); border-radius: 10px; }
+    .transfer-card-header { display: flex; justify-content: space-between; align-items: center; }
+    .transfer-member-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .transfer-route { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; }
+    .date-pill { padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+    .date-pill.origin { color: var(--red); background: var(--red-tint); }
+    .date-pill.target { color: var(--green); background: var(--green-tint); }
+    .route-arrow { color: var(--ink-sub); font-weight: 700; }
+    .empty-state { padding: 14px 0; text-align: center; font-size: 13px; color: var(--ink-sub); }
+
+    .nav-btn-sm {
+      padding: 5px 12px; border-radius: 999px; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--green);
+      background: var(--sheet); border: 1px solid var(--line);
+    }
+    .nav-btn-sm:active { background: var(--green-tint); }
+
+    .calendar-card { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+    .calendar-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--green-tint); border-bottom: 1px solid var(--line); text-align: center; }
+    .cal-day-name { padding: 7px 0; font-size: 12px; font-weight: 700; color: var(--green-deep); }
+    .cal-day-name.sun { color: var(--red); }
+    .cal-day-name.sat { color: var(--sky); }
+    .calendar-grid-body { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-cell {
+      display: flex; flex-direction: column; align-items: center; min-height: 54px; padding: 5px 2px; cursor: pointer;
+      border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); user-select: none;
+    }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell:active { background: var(--green-tint); }
+    .cal-cell.other-month { cursor: default; background: #f6f8f6; }
+    .cal-cell.is-sunday { cursor: default; background: #f6f8f6; }
+    .cal-cell.is-today { box-shadow: inset 0 0 0 2px var(--gold); }
+    .cal-date-num { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink); }
+    .cal-cell.is-sunday .cal-date-num { color: var(--red); }
+    .cal-cell.is-saturday .cal-date-num { color: var(--sky); }
+    .cal-badge { margin-top: 4px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .count-low { color: var(--red); background: var(--red-tint); }
+    .count-ok { color: var(--green); background: var(--green-tint); }
+    .count-full { color: var(--amber); background: var(--amber-tint); }
+    .count-off { color: var(--ink-sub); background: #e8ece9; }
+    .calendar-hint { margin-top: 10px; text-align: center; font-size: 11px; color: var(--ink-sub); }
+
+    /* 振替画面の戻るバー */
+    .back-bar { padding: 10px 14px 0; background: var(--paper); }
+    .btn-back {
+      padding: 7px 14px; border-radius: 999px; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--green);
+      background: var(--sheet); border: 1px solid var(--line);
+    }
+    .btn-back:active { background: var(--green-tint); }
+
+    /* ---------- アカウント作成・管理権限 ---------- */
+    .login-overlay { overflow-y: auto; align-items: flex-start; }
+    .login-card { margin: auto; }
+    .link-btn {
+      display: block; width: 100%; margin-top: 14px; padding: 6px; background: none; border: none;
+      font-size: 13px; font-weight: 700; color: var(--green); text-decoration: underline; cursor: pointer; text-align: center;
+    }
+    .form-hint { margin-top: 4px; font-size: 11px; color: var(--ink-sub); }
+    .role-user-card { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; background: #fafcfa; overflow: hidden; }
+    .role-user-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+    .role-user-name {
+      flex: 1; min-width: 0; text-align: left; background: none; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 700; color: var(--ink); word-break: break-all;
+    }
+    .role-select { padding: 6px 8px; font-size: 13px; font-weight: 700; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+    .role-user-detail { display: none; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 12px; background: #fff; }
+    .role-user-detail.open { display: block; }
+    .role-user-detail dl { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; margin-bottom: 10px; }
+    .role-user-detail dt { color: var(--ink-sub); font-weight: 700; }
+    .role-user-detail dd { word-break: break-all; color: var(--ink); }
+
+    /* ---------- 固定メンバー設定 ---------- */
+    .master-day-group { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 12px; }
+    .master-day-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+    .master-chips-container { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 28px; }
+    .master-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; background: var(--green-tint); color: var(--green-deep); border: 1px solid var(--line);
+    }
+    .master-chip button {
+      background: none; border: none; color: var(--ink-sub); font-size: 14px; font-weight: bold; cursor: pointer; padding: 0 2px; line-height: 1;
+    }
+    .master-chip button:hover { color: var(--red); }
+    .master-add-row { display: flex; gap: 6px; }
+    .master-add-row input { flex: 1; }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
@@ -404,22 +518,53 @@
   <div class="login-card">
     <div class="login-header">
       <h2>オークラ振替連絡</h2>
-      <p>ログインしてシフトシステムを開始します</p>
+      <p id="login-subtitle">ログインしてシフトシステムを開始します</p>
     </div>
 
-    <div class="login-error" id="login-error">IDまたはパスワードが正しくありません</div>
+    <!-- ログイン -->
+    <div id="login-panel">
+      <div class="login-error" id="login-error">ユーザー名またはパスワードが正しくありません</div>
 
-    <form onsubmit="handleLogin(event)">
-      <div class="form-group">
-        <label for="login-id">ログインID</label>
-        <input type="text" id="login-id" placeholder="IDを入力" required autocomplete="username" autocapitalize="none">
-      </div>
-      <div class="form-group">
-        <label for="login-pass">パスワード</label>
-        <input type="password" id="login-pass" placeholder="パスワードを入力" required autocomplete="current-password">
-      </div>
-      <button type="submit" class="btn-main" style="width: 100%; margin-top: 10px;">ログイン</button>
-    </form>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-id">ユーザー名</label>
+          <input type="text" id="login-id" placeholder="ユーザー名を入力" required autocomplete="username" autocapitalize="none">
+        </div>
+        <div class="form-group">
+          <label for="login-pass">パスワード</label>
+          <input type="password" id="login-pass" placeholder="パスワードを入力" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-main" style="width: 100%; margin-top: 10px;">ログイン</button>
+      </form>
+      <button type="button" class="link-btn" onclick="showSignup()">アカウントを新規作成する</button>
+    </div>
+
+    <!-- アカウント作成 -->
+    <div id="signup-panel" style="display:none;">
+      <div class="login-error" id="signup-error"></div>
+
+      <form onsubmit="handleSignup(event)" autocomplete="off">
+        <div class="form-group">
+          <label for="signup-fullname">名前（フルネーム）</label>
+          <input type="text" id="signup-fullname" placeholder="例：石川 太郎" required maxlength="30" autocomplete="name">
+          <div class="form-hint">名前を入力してください</div>
+        </div>
+        <div class="form-group">
+          <label for="signup-email">メールアドレス</label>
+          <input type="email" id="signup-email" placeholder="example@mail.com" required maxlength="254" autocomplete="email" autocapitalize="none">
+        </div>
+        <div class="form-group">
+          <label for="signup-username">ユーザーネーム</label>
+          <input type="text" id="signup-username" placeholder="半角英数字と_ら3〜20文字" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" autocomplete="username" autocapitalize="none">
+        </div>
+        <div class="form-group">
+          <label for="signup-pass">パスワード</label>
+          <input type="password" id="signup-pass" placeholder="8文字以上" required minlength="8" maxlength="64" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-main" id="signup-submit" style="width: 100%; margin-top: 10px;">アカウントを作成</button>
+      </form>
+      <button type="button" class="link-btn" onclick="showLogin()">ログイン画面に戻る</button>
+    </div>
   </div>
 </div>
 
@@ -432,18 +577,19 @@
   <!-- 管理者用メニュー -->
   <div class="menu-container" id="admin-menu-area" style="display:none;">
     <button class="menu-toggle-btn" onclick="toggleDropdownMenu(event)">
-      <span>☰</span> メニュー
+      メニュー
       <span class="menu-badge" id="menu-badge">0</span>
     </button>
 
     <div class="dropdown-menu" id="dropdown-menu">
-      <button class="dropdown-item" onclick="openRequestsModal()">
-        📩 申請管理
+      <button class="dropdown-item" id="item-requests" onclick="openRequestsModal()">
+        申請管理
         <span class="menu-badge" id="dropdown-req-badge">0</span>
       </button>
-      <button class="dropdown-item" onclick="openMasterConfig()">🔒 固定設定</button>
-      <button class="dropdown-item" onclick="openDataModal()">🔒 データ管理</button>
-      <button class="dropdown-item logout-item" onclick="handleLogout()">🚪 ログアウト</button>
+      <button class="dropdown-item" id="item-roles" onclick="openRolesModal()">管理権限</button>
+      <button class="dropdown-item" id="item-master" onclick="openMasterConfig()">固定設定</button>
+      <button class="dropdown-item" id="item-data" onclick="openDataModal()">データ管理</button>
+      <button class="dropdown-item logout-item" onclick="handleLogout()">ログアウト</button>
     </div>
   </div>
 
@@ -453,24 +599,88 @@
   </div>
 </header>
 
-<div class="week-nav">
-  <button class="nav-btn" onclick="changeWeek(-1)">＜ 前の週</button>
-  <div class="title-wrap">
-    <div class="current-month-title" id="week-title">----年--月</div>
-    <input type="date" id="jump-date" aria-label="日付を選んでその週へ移動">
+<!-- ホーム画面 -->
+<div id="dashboard-view" class="view-section">
+  <div class="dashboard-container">
+
+    <!-- 直近の日程 -->
+    <div class="dashboard-section">
+      <div class="section-header">
+        <h3>直近の出勤予定</h3>
+      </div>
+      <div id="upcoming-schedule-list" class="upcoming-list"></div>
+    </div>
+
+    <!-- 振替状況（何日の分をいつに振り替えたか） -->
+    <div class="dashboard-section">
+      <div class="section-header">
+        <h3>振替状況・履歴</h3>
+      </div>
+      <div id="transfer-history-list" class="transfer-list"></div>
+    </div>
+
+    <!-- 月間カレンダー -->
+    <div class="dashboard-section">
+      <div class="section-header">
+        <button class="nav-btn-sm" onclick="changeCalendarMonth(-1)">＜ 前月</button>
+        <h3 id="calendar-month-title">----年--月</h3>
+        <button class="nav-btn-sm" onclick="changeCalendarMonth(1)">次月 ＞</button>
+      </div>
+      <div class="calendar-card">
+        <div class="calendar-grid-header">
+          <div class="cal-day-name sun">日</div>
+          <div class="cal-day-name">月</div>
+          <div class="cal-day-name">火</div>
+          <div class="cal-day-name">水</div>
+          <div class="cal-day-name">木</div>
+          <div class="cal-day-name">金</div>
+          <div class="cal-day-name sat">土</div>
+        </div>
+        <div class="calendar-grid-body" id="calendar-grid"></div>
+      </div>
+      <div class="calendar-hint">日付をタップすると、その日の振替画面が開きます</div>
+    </div>
+
   </div>
-  <button class="nav-btn" onclick="changeWeek(1)">次の週 ＞</button>
 </div>
 
-<div class="day-tabs" id="day-tabs"></div>
+<!-- 振替画面（カレンダーをタップしたときに開く） -->
+<div id="shift-detail-view" class="view-section" style="display:none;">
+  <div class="back-bar">
+    <button class="btn-back" onclick="switchView('dashboard')">＜ 戻る</button>
+  </div>
 
-<div class="container">
-  <div id="status-container"></div>
-  <div class="member-list" id="member-list"></div>
+  <div class="week-nav">
+    <button class="nav-btn" onclick="changeWeek(-1)">＜ 前の週</button>
+    <div class="title-wrap">
+      <div class="current-month-title" id="week-title">----年--月</div>
+      <input type="date" id="jump-date" aria-label="日付を選んでその週へ移動">
+    </div>
+    <button class="nav-btn" onclick="changeWeek(1)">次の週 ＞</button>
+  </div>
+
+  <div class="day-tabs" id="day-tabs"></div>
+
+  <div class="container">
+    <div id="status-container"></div>
+    <div class="member-list" id="member-list"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由練習を追加</button>
+  </div>
 </div>
 
-<div class="bottom-bar">
-  <button class="btn-main" id="add-btn" onclick="addFreeShift()">+ 自由練習を追加</button>
+<!-- 管理権限モーダル（adminのみ） -->
+<div class="modal" id="roles-modal">
+  <div class="modal-content">
+    <div class="modal-title">管理権限</div>
+    <p style="font-size: 11px; color: var(--ink-sub); margin-bottom: 12px;">名前を押すとメールアドレスとユーザー名を表示します。パスワードは安全のため表示できません（再設定メールを送れます）。</p>
+    <div id="roles-list"></div>
+    <div class="modal-actions">
+      <button class="btn-action" style="border-color: var(--line); color: var(--ink-sub);" onclick="closeModal('roles-modal')">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <!-- 特例申請モーダル -->
@@ -521,10 +731,10 @@
 <div class="modal" id="master-modal">
   <div class="modal-content">
     <div class="modal-title">曜日ごとの固定メンバー設定</div>
-    <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 12px;">※カンマ(,)区切りで名前を入力してください</p>
+    <p style="font-size: 11px; color: var(--ink-sub); margin-bottom: 12px;">曜日ごとにメンバーを割当・削除できます。名前を入力すると候補が表示されます。</p>
     <div id="master-inputs"></div>
     <div class="modal-actions">
-      <button class="btn-action" style="border-color: var(--border); color: var(--text-sub);" onclick="closeModal('master-modal')">キャンセル</button>
+      <button class="btn-action" style="border-color: var(--line); color: var(--ink-sub);" onclick="closeModal('master-modal')">キャンセル</button>
       <button class="btn-main" style="padding: 8px 16px; flex: initial;" onclick="saveMasterConfig()">保存</button>
     </div>
   </div>
