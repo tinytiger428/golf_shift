@@ -364,6 +364,7 @@ onAuthStateChanged(auth, async user => {
 
   let role = 'user';
   let fullName = '';
+  let profileMissing = false;
   try {
     const userDocSnap = await getDoc(doc(db, 'users', user.uid));
     if (userDocSnap.exists()) {
@@ -373,9 +374,18 @@ onAuthStateChanged(auth, async user => {
     } else {
       const legacyAdminSnap = await getDoc(doc(db, 'admins', user.uid));
       if (legacyAdminSnap.exists()) role = 'admin';
+      else profileMissing = true;
     }
   } catch (e) {
     console.warn('Role fetch warning:', e);
+  }
+
+  // アプリ側で削除されたユーザー（プロフィールが無い）はログインさせない。登録処理中は除く。
+  if (profileMissing && !signupInProgress) {
+    await signOut(auth);
+    const errorDiv = document.getElementById('login-error');
+    if (errorDiv) errorDiv.style.display = 'block';
+    return;
   }
 
   currentUserRole = role;
@@ -567,6 +577,7 @@ function renderRolesList() {
             <dt>ユーザー名</dt><dd>${esc(u.username || '-')}</dd>
           </dl>
           ${u.email ? `<button class="btn-action" style="font-size:11px;" onclick="sendPasswordResetEmailForUser('${esc(u.email)}')">パスワード再設定メールを送信</button>` : ''}
+          <button class="btn-action" style="font-size:11px; color:#c0392b;" onclick="deleteUserAccount('${esc(u.uid)}')">このユーザーを削除</button>
         </div>
       </div>`;
   }).join('');
@@ -586,6 +597,28 @@ async function changeUserRole(uid, newRole) {
   } catch (err) {
     console.error(err);
     alert('権限の変更に失敗しました。');
+  }
+}
+
+async function deleteUserAccount(uid) {
+  if (!requireAdmin()) return;
+  const u = (allUsers || []).find(x => x.uid === uid);
+  if (!u) return;
+  if (auth.currentUser && auth.currentUser.uid === uid) {
+    alert('自分自身は削除できません。');
+    return;
+  }
+  const ok = await askConfirm(`「${u.fullName || u.username || uid}」を削除しますか？\nこのユーザーはログインできなくなります。\n（Firebase Consoleの Authentication からも削除すると完全に消えます）`);
+  if (!ok) return;
+  try {
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'users', uid));
+    if (u.username) batch.delete(doc(db, 'usernames', u.username));
+    await batch.commit();
+    alert('ユーザーを削除しました。');
+  } catch (err) {
+    console.error(err);
+    alert('ユーザーの削除に失敗しました。');
   }
 }
 
@@ -1407,6 +1440,6 @@ Object.assign(window, {
   openDataModal, changeWeek, addFreeShift, toggleReqTypeUI, closeModal, submitSpecialRequest,
   saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData,
   switchView, changeCalendarMonth, onCalendarDateClick,
-  showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, toggleUserDetail,
+  showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, deleteUserAccount, toggleUserDetail,
   addMasterMember, removeMasterMember
 });
