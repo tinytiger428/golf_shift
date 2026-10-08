@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, setDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, deleteUser, sendPasswordResetEmail, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, setDoc, onSnapshot, writeBatch, query, limit, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { firebaseConfig, LOGIN_EMAIL_DOMAIN } from './firebase-config.js';
 
 const app = initializeApp(firebaseConfig);
@@ -107,7 +107,10 @@ function formatDate(d) {
 }
 
 function getDayName(dateStr) {
-  return WEEKDAYS[new Date(dateStr.replace(/-/g, '/')).getDay()];
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const d = new Date(dateStr.replace(/-/g, '/'));
+  if (isNaN(d.getTime())) return '';
+  return WEEKDAYS[d.getDay()] || '';
 }
 
 function getWeekDays(monday) {
@@ -143,17 +146,24 @@ function hasMember(date, name) {
 }
 
 function removeMember(date, item) {
+  dirty.dates.add(date);
   const o = getOv(date);
   if (item.type === 'fixed' && getFixedNames(date).includes(item.name)) {
     if (!o.removed.includes(item.name)) o.removed.push(item.name);
   } else {
     const i = o.added.findIndex(a =>
-      a.name === item.name && a.type === item.type && a.originDate === item.originDate);
-    if (i >= 0) o.added.splice(i, 1);
+      a.name === item.name && (a.type === item.type || !item.type) && (!item.originDate || a.originDate === item.originDate));
+    if (i >= 0) {
+      o.added.splice(i, 1);
+    } else {
+      const idxByName = o.added.findIndex(a => a.name === item.name);
+      if (idxByName >= 0) o.added.splice(idxByName, 1);
+    }
   }
 }
 
 function addMember(date, item) {
+  dirty.dates.add(date);
   const o = getOv(date);
   if (item.type === 'fixed' && getFixedNames(date).includes(item.name)) {
     o.removed = o.removed.filter(n => n !== item.name);
@@ -196,6 +206,31 @@ async function saveStorage() {
   render();
 }
 
+/* ============ 確認ダイアログ（ブラウザ標準のconfirmは一瞬で閉じる端末があるため自前で表示） ============ */
+function askConfirm(message) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal';
+    wrap.style.display = 'flex';
+    wrap.style.zIndex = '10000';
+    wrap.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-title" style="white-space:pre-wrap;">${esc(message)}</div>
+        <div class="modal-actions">
+          <button class="btn-action" data-ans="no">いいえ</button>
+          <button class="btn-main" style="padding: 8px 16px; flex: initial;" data-ans="yes">はい</button>
+        </div>
+      </div>`;
+    wrap.addEventListener('click', e => {
+      const b = e.target.closest('button[data-ans]');
+      if (!b) return;
+      wrap.remove();
+      resolve(b.dataset.ans === 'yes');
+    });
+    document.body.appendChild(wrap);
+  });
+}
+
 /* ============ 認証・メニュー ============ */
 function requireAdmin() {
   if (currentUserRole !== 'admin') {
@@ -228,10 +263,17 @@ async function handleLogin(e) {
   }
 }
 
-function handleLogout() {
-  if (confirm('ログアウトしますか？')) {
-    document.getElementById('dropdown-menu').classList.remove('show');
-    signOut(auth);
+async function handleLogout() {
+  const menu = document.getElementById('dropdown-menu');
+  if (menu) menu.classList.remove('show');
+  try {
+    await signOut(auth);
+    showLogin();
+    const overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  } catch (err) {
+    console.error('Logout error:', err);
+    alert('ログアウトに失敗しました。通信状況を確認してもう一度お試しください。');
   }
 }
 
@@ -243,7 +285,8 @@ function startListeners(isAdmin) {
   stopListeners();
   const onErr = e => { console.error(e); alert('データの同期に失敗しました。権限設定を確認してください。'); };
 
-  unsubs.push(onSnapshot(collection(db, 'shifts'), snap => {
+  // クエリ制限（limit）を付与して過剰なドキュメント読み取り・コストを防止
+  unsubs.push(onSnapshot(query(collection(db, 'shifts'), limit(200)), snap => {
     overrides = {};
     snap.forEach(d => {
       const v = d.data();
@@ -252,7 +295,7 @@ function startListeners(isAdmin) {
     render();
   }, onErr));
 
-  unsubs.push(onSnapshot(collection(db, 'counts'), snap => {
+  unsubs.push(onSnapshot(query(collection(db, 'counts'), limit(100)), snap => {
     userDayRescheduleCounts = {};
     snap.forEach(d => {
       Object.entries(d.data().c || {}).forEach(([name, n]) => {
@@ -271,42 +314,359 @@ function startListeners(isAdmin) {
     render();
   }, onErr));
 
-  if (isAdmin) { // 申請（理由を含む）は管理者だけが読める
-    unsubs.push(onSnapshot(collection(db, 'requests'), snap => {
+  if (isAdmin) { // 申請およびユーザー権限一覧は管理者/幹部だけが読める。
+    unsubs.push(onSnapshot(query(collection(db, 'requests'), orderBy('id', 'desc'), limit(50)), snap => {
       pendingRequests = snap.docs.map(d => d.data()).sort((a, b) => a.id - b.id);
       render();
     }, onErr));
+
+    unsubs.push(onSnapshot(query(collection(db, 'users'), limit(500)), snap => {
+      allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      renderRolesList();
+    }, onErr));
   }
+}
+
+function canOperateOn(memberName) {
+  if (currentUserRole === 'admin' || currentUserRole === 'executive') return true;
+  if (!currentMemberName) return false;
+  return normName(memberName) === normName(currentMemberName);
 }
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUserRole = null;
+    currentMemberName = '';
     stopListeners();
     pendingRequests = [];
-    document.getElementById('login-id').value = '';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-overlay').style.display = 'flex';
+    const loginId = document.getElementById('login-id');
+    const loginPass = document.getElementById('login-pass');
+    if (loginId) loginId.value = '';
+    if (loginPass) loginPass.value = '';
+    showLogin();
+    const overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.style.display = 'flex';
     return;
   }
-  let isAdmin = false;
-  try { isAdmin = (await getDoc(doc(db, 'admins', user.uid))).exists(); } catch (e) { /* 一般ユーザー扱い */ }
-  currentUserRole = isAdmin ? 'admin' : 'user';
-  document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('login-pass').value = '';
+
+  let role = 'user';
+  let fullName = '';
+  try {
+    const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+    if (userDocSnap.exists()) {
+      const uData = userDocSnap.data();
+      role = computeRole(uData);
+      fullName = uData.fullName || '';
+    } else {
+      const legacyAdminSnap = await getDoc(doc(db, 'admins', user.uid));
+      if (legacyAdminSnap.exists()) role = 'admin';
+    }
+  } catch (e) {
+    console.warn('Role fetch warning:', e);
+  }
+
+  currentUserRole = role;
+  currentMemberName = fullName;
+
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.style.display = 'none';
+  const loginPass = document.getElementById('login-pass');
+  if (loginPass) loginPass.value = '';
+
   updateRoleUI();
-  startListeners(isAdmin);
+  startListeners(role === 'admin' || role === 'executive');
   render();
 });
 
 function updateRoleUI() {
   const isAdmin = currentUserRole === 'admin';
-  document.getElementById('admin-menu-area').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('user-menu-area').style.display = isAdmin ? 'none' : 'block';
+  const isExec = currentUserRole === 'executive';
+  const hasMenu = isAdmin || isExec;
+  const adminMenuArea = document.getElementById('admin-menu-area');
+  const userMenuArea = document.getElementById('user-menu-area');
+  if (adminMenuArea) adminMenuArea.style.display = hasMenu ? 'block' : 'none';
+  if (userMenuArea) userMenuArea.style.display = hasMenu ? 'none' : 'block';
+
+  const itemRoles = document.getElementById('item-roles');
+  const itemMaster = document.getElementById('item-master');
+  const itemData = document.getElementById('item-data');
+  if (itemRoles) itemRoles.style.display = isAdmin ? 'block' : 'none';
+  if (itemMaster) itemMaster.style.display = isAdmin ? 'block' : 'none';
+  if (itemData) itemData.style.display = isAdmin ? 'block' : 'none';
 }
 
 function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
+  const modal = document.getElementById(id);
+  if (modal) modal.style.display = 'none';
+}
+
+/* ============ アカウント管理・サインアップ ============ */
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const RESERVED_USERNAMES = ['admin', 'administrator', 'root', 'system', 'null', 'undefined'];
+const ROLE_LABELS = { admin: 'admin', executive: '幹部', user: 'ユーザー' };
+
+let currentMemberName = '';
+let allUsers = [];
+let signupInProgress = false;
+
+function showSignup() {
+  const loginPanel = document.getElementById('login-panel');
+  const signupPanel = document.getElementById('signup-panel');
+  if (loginPanel) loginPanel.style.display = 'none';
+  if (signupPanel) signupPanel.style.display = 'block';
+  const subtitle = document.getElementById('login-subtitle');
+  if (subtitle) subtitle.textContent = 'アカウントを新規作成します';
+  const errDiv = document.getElementById('signup-error');
+  if (errDiv) errDiv.style.display = 'none';
+}
+
+function showLogin() {
+  const loginPanel = document.getElementById('login-panel');
+  const signupPanel = document.getElementById('signup-panel');
+  if (signupPanel) signupPanel.style.display = 'none';
+  if (loginPanel) loginPanel.style.display = 'block';
+  const subtitle = document.getElementById('login-subtitle');
+  if (subtitle) subtitle.textContent = 'ログインしてシフトシステムを開始します';
+}
+
+function signupErrorMessage(err) {
+  if (!err) return 'アカウントを作成できませんでした。';
+  console.error('Signup error details:', err);
+  switch (err.code) {
+    case 'auth/email-already-in-use':
+      return 'このメールアドレスは既に登録されています。';
+    case 'auth/invalid-email':
+      return 'メールアドレスの形式が正しくありません。';
+    case 'auth/weak-password':
+      return 'パスワードは6文字以上で入力してください。';
+    case 'auth/admin-restricted-operation':
+    case 'auth/operation-not-allowed':
+      return 'Firebase Consoleの設定で新規ユーザー登録が制限されています。Firebaseコンソールの[Authentication] → [設定]（またはSign-in method）でメール/パスワード認証および新規登録を許可してください。';
+    case 'permission-denied':
+      return 'データベースへの書き込み権限がありませんでした。';
+    default:
+      if (err.message) return `アカウントを作成できませんでした（${err.message}）。`;
+      return 'アカウントを作成できませんでした。通信状況を確認してもう一度お試しください。';
+  }
+}
+
+async function handleSignup(e) {
+  e.preventDefault();
+  const errorDiv = document.getElementById('signup-error');
+  const btn = document.getElementById('signup-submit');
+  const showErr = msg => { if (errorDiv) { errorDiv.textContent = msg; errorDiv.style.display = 'block'; } };
+
+  const fullName = normName(document.getElementById('signup-fullname')?.value || '');
+  const email = (document.getElementById('signup-email')?.value || '').trim().toLowerCase();
+  const username = (document.getElementById('signup-username')?.value || '').trim().toLowerCase();
+  const pass = document.getElementById('signup-pass')?.value || '';
+
+  if (!fullName || fullName.length > 30) { showErr('名前は1〜30文字で入力してください。'); return; }
+  if (!EMAIL_RE.test(email) || email.length > 254) { showErr('メールアドレスの形式が正しくありません。'); return; }
+  if (email.endsWith('@' + LOGIN_EMAIL_DOMAIN)) { showErr('このメールアドレスは使用できません。'); return; }
+  if (!USERNAME_RE.test(username)) { showErr('ユーザーネームは半角英数字と_で3〜20文字で入力してください。'); return; }
+  if (RESERVED_USERNAMES.includes(username)) { showErr('このユーザーネームは使用できません。'); return; }
+  if (pass.length < 6 || pass.length > 64) { showErr('パスワードは6文字以上で入力してください。'); return; }
+
+  if (btn) btn.disabled = true;
+  signupInProgress = true;
+  let cred = null;
+  let created = false;
+  try {
+    cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+    try {
+      const taken = await getDoc(doc(db, 'usernames', username));
+      if (taken.exists() && taken.data().uid !== cred.user.uid) {
+        await deleteUser(cred.user);
+        showErr('このユーザーネームは既に使われています。別のユーザーネームを入力してください。');
+        return;
+      }
+    } catch (checkErr) {
+      console.warn('Username check skipped:', checkErr);
+    }
+
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', cred.user.uid), { fullName, email, username, role: 'user', createdAt: Date.now() });
+    batch.set(doc(db, 'usernames', username), { uid: cred.user.uid, email });
+    await batch.commit();
+    created = true;
+  } catch (err) {
+    console.error('Signup error:', err);
+    if (cred && !created) { try { await deleteUser(cred.user); } catch (_) { /* 無視 */ } }
+    showErr(signupErrorMessage(err));
+  } finally {
+    if (btn) btn.disabled = false;
+    signupInProgress = false;
+  }
+
+  if (created) {
+    if (document.getElementById('signup-pass')) document.getElementById('signup-pass').value = '';
+    if (document.getElementById('signup-error')) document.getElementById('signup-error').style.display = 'none';
+  }
+}
+
+function computeRole(userData) {
+  if (!userData) return 'user';
+  if (userData.role === 'admin' || userData.role === 'executive' || userData.role === 'user') return userData.role;
+  return 'user';
+}
+
+function openRolesModal() {
+  const menu = document.getElementById('dropdown-menu');
+  if (menu) menu.classList.remove('show');
+  renderRolesList();
+  const modal = document.getElementById('roles-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function renderRolesList() {
+  const listDiv = document.getElementById('roles-list');
+  if (!listDiv) return;
+
+  if (!allUsers || allUsers.length === 0) {
+    listDiv.innerHTML = '<p style="font-size:13px; color:var(--ink-sub); text-align:center; padding: 20px 0;">登録されているアカウントはありません。</p>';
+    return;
+  }
+
+  const sorted = [...allUsers].sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'ja'));
+
+  listDiv.innerHTML = sorted.map(u => {
+    const role = computeRole(u);
+    const detailId = `role-detail-${u.uid}`;
+    return `
+      <div class="role-user-card">
+        <div class="role-user-row">
+          <button class="role-user-name" onclick="toggleUserDetail('${detailId}')">
+            ${esc(u.fullName || '（名前未設定）')}
+          </button>
+          <select class="role-select" onchange="changeUserRole('${esc(u.uid)}', this.value)">
+            <option value="admin" ${role === 'admin' ? 'selected' : ''}>admin</option>
+            <option value="executive" ${role === 'executive' ? 'selected' : ''}>幹部</option>
+            <option value="user" ${role === 'user' ? 'selected' : ''}>ユーザー</option>
+          </select>
+        </div>
+        <div class="role-user-detail" id="${detailId}">
+          <dl>
+            <dt>フルネーム</dt><dd>${esc(u.fullName || '-')}</dd>
+            <dt>メール</dt><dd>${esc(u.email || '-')}</dd>
+            <dt>ユーザー名</dt><dd>${esc(u.username || '-')}</dd>
+          </dl>
+          ${u.email ? `<button class="btn-action" style="font-size:11px;" onclick="sendPasswordResetEmailForUser('${esc(u.email)}')">パスワード再設定メールを送信</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleUserDetail(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+async function changeUserRole(uid, newRole) {
+  if (!ROLE_LABELS[newRole]) return;
+  try {
+    await setDoc(doc(db, 'users', uid), { role: newRole }, { merge: true });
+    alert(`権限を「${ROLE_LABELS[newRole]}」に変更しました。`);
+    renderRolesList();
+  } catch (err) {
+    console.error(err);
+    alert('権限の変更に失敗しました。');
+  }
+}
+
+async function sendPasswordResetEmailForUser(email) {
+  if (!email) return;
+  if (!confirm(`${email} 宛にパスワード再設定メールを送信しますか？`)) return;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    alert(`${email} に再設定用のメールを送信しました。`);
+  } catch (err) {
+    console.error(err);
+    alert('パスワード再設定メールの送信に失敗しました。');
+  }
+}
+
+let editingMasterConfig = {};
+
+function openMasterConfig() {
+  const menu = document.getElementById('dropdown-menu');
+  if (menu) menu.classList.remove('show');
+  editingMasterConfig = clone(masterConfig);
+  renderMasterConfigInputs();
+  const modal = document.getElementById('master-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function renderMasterConfigInputs() {
+  const container = document.getElementById('master-inputs');
+  if (!container) return;
+
+  const suggestions = new Set();
+  (allUsers || []).forEach(u => { if (u.fullName) suggestions.add(u.fullName); });
+  OPEN_DAYS.forEach(d => {
+    (masterConfig[d] || []).forEach(name => suggestions.add(name));
+  });
+
+  const datalistHtml = `<datalist id="master-name-suggestions">` +
+    Array.from(suggestions).map(n => `<option value="${esc(n)}"></option>`).join('') +
+    `</datalist>`;
+
+  const daysHtml = OPEN_DAYS.map(d => {
+    const members = editingMasterConfig[d] || [];
+    const chipsHtml = members.map((name, idx) => `
+      <span class="master-chip">
+        ${esc(name)}
+        <button type="button" onclick="removeMasterMember('${d}', ${idx})">×</button>
+      </span>
+    `).join('');
+
+    return `
+      <div class="form-group master-day-group">
+        <label>${esc(d)}曜日の固定メンバー (${members.length}名)</label>
+        <div class="master-chips-container">${chipsHtml}</div>
+        <div class="master-add-row">
+          <input type="text" id="master-input-${d}" list="master-name-suggestions" placeholder="名前を入力（候補から選択）" onkeydown="if(event.key==='Enter'){event.preventDefault();addMasterMember('${d}');}">
+          <button type="button" class="btn-action" onclick="addMasterMember('${d}')">追加</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = datalistHtml + daysHtml;
+}
+
+function addMasterMember(day) {
+  const input = document.getElementById(`master-input-${day}`);
+  if (!input) return;
+  const val = normName(input.value);
+  if (!val) return;
+
+  if (!editingMasterConfig[day]) editingMasterConfig[day] = [];
+  if (!editingMasterConfig[day].includes(val)) {
+    editingMasterConfig[day].push(val);
+  }
+  renderMasterConfigInputs();
+  setTimeout(() => {
+    const nextInput = document.getElementById(`master-input-${day}`);
+    if (nextInput) nextInput.focus();
+  }, 50);
+}
+
+function removeMasterMember(day, idx) {
+  if (editingMasterConfig[day] && editingMasterConfig[day][idx] !== undefined) {
+    editingMasterConfig[day].splice(idx, 1);
+    renderMasterConfigInputs();
+  }
+}
+
+function saveMasterConfig() {
+  masterConfig = sanitizeMaster(editingMasterConfig);
+  dirty.master = true;
+  closeModal('master-modal');
+  saveStorage();
+  alert('固定パターンを更新しました！\n（個別変更は維持されます）');
 }
 
 /* ============ 描画 ============ */
@@ -371,15 +731,17 @@ function renderContent() {
       tag = '<span class="tag-type tag-special">特別振替枠</span>';
     }
 
-    let actions;
-    if (item.type === 'free') {
-      actions = `<button class="btn-action btn-cancel" data-action="remove-free" data-index="${index}">削除</button>`;
-    } else if (item.type === 'transfer' || item.type === 'special_transfer') {
-      actions = `<button class="btn-action btn-cancel" data-action="cancel-transfer" data-index="${index}">振替取消</button>`;
-    } else {
-      actions = `
-        <button class="btn-action" data-action="reschedule" data-index="${index}">振替</button>
-        <button class="btn-action" style="border-color:#52796f; color:#52796f;" data-action="special" data-index="${index}">特例申請</button>`;
+    let actions = '';
+    if (canOperateOn(item.name)) {
+      if (item.type === 'free') {
+        actions = `<button class="btn-action btn-cancel" data-action="remove-free" data-index="${index}">削除</button>`;
+      } else if (item.type === 'transfer' || item.type === 'special_transfer') {
+        actions = `<button class="btn-action btn-cancel" data-action="cancel-transfer" data-index="${index}">振替取消</button>`;
+      } else {
+        actions = `
+          <button class="btn-action" data-action="reschedule" data-index="${index}">振替</button>
+          <button class="btn-action" style="border-color:#52796f; color:#52796f;" data-action="special" data-index="${index}">特例申請</button>`;
+      }
     }
 
     return `
@@ -395,10 +757,183 @@ function renderContent() {
   document.getElementById('add-btn').disabled = count >= MAX_STAFF;
 }
 
+/* ============ ダッシュボード・月間カレンダー ============ */
+let currentCalendarYear = new Date().getFullYear();
+let currentCalendarMonth = new Date().getMonth();
+
+function changeCalendarMonth(delta) {
+  currentCalendarMonth += delta;
+  if (currentCalendarMonth < 0) {
+    currentCalendarMonth = 11;
+    currentCalendarYear--;
+  } else if (currentCalendarMonth > 11) {
+    currentCalendarMonth = 0;
+    currentCalendarYear++;
+  }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const titleEl = document.getElementById('calendar-month-title');
+  if (titleEl) titleEl.textContent = `${currentCalendarYear}年${currentCalendarMonth + 1}月`;
+
+  const gridEl = document.getElementById('calendar-grid');
+  if (!gridEl) return;
+
+  const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+  const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+  const totalDays = lastDay.getDate();
+  const startDayOfWeek = firstDay.getDay();
+
+  const todayStr = formatDate(new Date());
+  let html = '';
+
+  for (let i = 0; i < startDayOfWeek; i++) {
+    html += `<div class="cal-cell other-month"></div>`;
+  }
+
+  for (let day = 1; day <= totalDays; day++) {
+    const d = new Date(currentCalendarYear, currentCalendarMonth, day);
+    const dateStr = formatDate(d);
+    const dayOfWeek = d.getDay();
+    const isToday = dateStr === todayStr;
+    const isSun = dayOfWeek === 0;
+    const isSat = dayOfWeek === 6;
+
+    let cellClass = 'cal-cell';
+    if (isToday) cellClass += ' is-today';
+    if (isSun) cellClass += ' is-sunday';
+    if (isSat) cellClass += ' is-saturday';
+
+    if (isSun) {
+      html += `
+        <div class="cal-cell is-sunday">
+          <span class="cal-date-num">${day}</span>
+          <span class="cal-badge count-off">休み</span>
+        </div>`;
+    } else {
+      const staffList = getShiftObjectsForDate(dateStr);
+      const count = staffList.length;
+      let badgeClass = 'count-ok';
+      if (count < MIN_STAFF) badgeClass = 'count-low';
+      else if (count >= MAX_STAFF) badgeClass = 'count-full';
+
+      html += `
+        <div class="${cellClass}" onclick="onCalendarDateClick('${dateStr}')">
+          <span class="cal-date-num">${day}</span>
+          <span class="cal-badge ${badgeClass}">${count}名</span>
+        </div>`;
+    }
+  }
+
+  gridEl.innerHTML = html;
+}
+
+function onCalendarDateClick(dateStr) {
+  switchView('shift-detail', dateStr);
+}
+
+function switchView(viewName, targetDateStr) {
+  const dashEl = document.getElementById('dashboard-view');
+  const detailEl = document.getElementById('shift-detail-view');
+  if (!dashEl || !detailEl) return;
+
+  if (targetDateStr) {
+    jumpToDate(targetDateStr);
+  }
+
+  if (viewName === 'dashboard') {
+    dashEl.style.display = 'block';
+    detailEl.style.display = 'none';
+  } else {
+    dashEl.style.display = 'none';
+    detailEl.style.display = 'block';
+  }
+}
+
+function renderUpcomingSchedule() {
+  const container = document.getElementById('upcoming-schedule-list');
+  if (!container) return;
+
+  const today = new Date();
+  const list = [];
+  let current = new Date(today);
+
+  while (list.length < 3) {
+    if (current.getDay() !== 0) {
+      list.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  container.innerHTML = list.map(d => {
+    const dateStr = formatDate(d);
+    const dayName = WEEKDAYS[d.getDay()];
+    const members = getShiftObjectsForDate(dateStr);
+    const count = members.length;
+
+    return `
+      <div class="upcoming-card" onclick="onCalendarDateClick('${dateStr}')">
+        <div>
+          <div class="upcoming-date">${d.getMonth() + 1}月${d.getDate()}日 (${dayName})</div>
+          <div class="upcoming-detail">出勤メンバー: ${count}名 (${members.map(m => esc(m.name)).join(', ') || 'なし'})</div>
+        </div>
+        <span class="upcoming-badge">${count}名出勤</span>
+      </div>`;
+  }).join('');
+}
+
+function renderTransferHistory() {
+  const container = document.getElementById('transfer-history-list');
+  if (!container) return;
+
+  const transfers = [];
+  Object.entries(overrides).forEach(([dateStr, obj]) => {
+    (obj.added || []).forEach(item => {
+      if (typeof item === 'object' && item.type === 'transfer' && item.originDate) {
+        transfers.push({
+          name: item.name,
+          originDate: item.originDate,
+          targetDate: dateStr
+        });
+      }
+    });
+  });
+
+  if (transfers.length === 0) {
+    container.innerHTML = `<div class="empty-state">現在、振替の履歴はありません</div>`;
+    return;
+  }
+
+  const recent = transfers.slice(-5).reverse();
+  container.innerHTML = recent.map(t => {
+    return `
+      <div class="transfer-card">
+        <div class="transfer-card-header">
+          <span class="transfer-member-name">${esc(t.name)}</span>
+          ${canOperateOn(t.name) ? `<button class="btn-action btn-cancel" data-hist-cancel data-name="${esc(t.name)}" data-origin="${esc(t.originDate)}" data-target="${esc(t.targetDate)}">取消</button>` : ''}
+        </div>
+        <div class="transfer-route">
+          <span class="date-pill origin">${esc(t.originDate)}</span>
+          <span class="route-arrow">➔</span>
+          <span class="date-pill target">${esc(t.targetDate)}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderDashboard() {
+  renderUpcomingSchedule();
+  renderTransferHistory();
+  renderCalendar();
+}
+
 function render() {
+  renderDashboard();
   renderTabs();
   renderContent();
 }
+render();
 
 function selectDate(dateStr) {
   selectedDateStr = dateStr;
@@ -432,6 +967,7 @@ jumpInput.addEventListener('click', () => {
 // 振替先の日付チェック。問題があればメッセージを返す
 function validateTargetDate(targetDate, originDate, name) {
   if (!targetDate || targetDate === originDate) return '別の日付を正しく選択してください。';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return '日付の形式が正しくありません。';
   if (Number.isNaN(new Date(targetDate.replace(/-/g, '/')).getTime())) return '日付が正しくありません。';
   if (!OPEN_DAYS.includes(getDayName(targetDate))) return '日曜日は活動日ではないため振替できません。';
   if (targetDate < formatDate(new Date())) return '過去の日付には振替できません。';
@@ -461,8 +997,12 @@ function addFreeShift() {
   saveStorage();
 }
 
-function removeFreeShift(item) {
-  if (confirm(`${item.name}さんの自由練習を削除しますか？`)) {
+async function removeFreeShift(item) {
+  if (!canOperateOn(item.name)) {
+    alert('ご自身のシフトのみ削除できます。');
+    return;
+  }
+  if (await askConfirm(`${item.name}さんの自由練習を削除しますか？`)) {
     removeMember(selectedDateStr, item);
     saveStorage();
   }
@@ -470,6 +1010,10 @@ function removeFreeShift(item) {
 
 /* ============ 特例申請 ============ */
 function openSpecialRequestModal(name, index) {
+  if (!canOperateOn(name)) {
+    alert('ご自身のシフトのみ申請できます。');
+    return;
+  }
   document.getElementById('special-req-title').textContent = `【特例申請】${name}さん (${selectedDateStr})`;
   document.getElementById('req-member-name').value = name;
   document.getElementById('req-member-index').value = index;
@@ -601,12 +1145,16 @@ function rejectRequest(reqId) {
 
 /* ============ 通常振替 ============ */
 function openRescheduleModal(name, index) {
+  if (!canOperateOn(name)) {
+    alert('ご自身のシフトのみ振替できます。');
+    return;
+  }
   const dayName = getDayName(selectedDateStr);
-  if (getRescheduleUsed(name, dayName) >= MAX_RESCHEDULE_PER_DAY) {
+  if (currentUserRole !== 'admin' && getRescheduleUsed(name, dayName) >= MAX_RESCHEDULE_PER_DAY) {
     alert(`${name}さんの【${dayName}曜日枠】の振替上限（${MAX_RESCHEDULE_PER_DAY}回）に達しています。\n上限を超える場合は「特例申請」ボタンから管理者に申請してください。`);
     return;
   }
-  if (getShiftObjectsForDate(selectedDateStr).length - 1 < MIN_STAFF) {
+  if (currentUserRole !== 'admin' && getShiftObjectsForDate(selectedDateStr).length - 1 < MIN_STAFF) {
     alert(`振替すると ${selectedDateStr} が${MIN_STAFF}名未満になります。\n代理を立ててください。`);
     return;
   }
@@ -623,6 +1171,12 @@ function executeReschedule() {
   const index = parseInt(document.getElementById('reschedule-member-index').value, 10);
   const targetDate = document.getElementById('reschedule-date-input').value;
 
+  if (!canOperateOn(name)) {
+    alert('ご自身のシフトのみ振替できます。');
+    closeModal('reschedule-modal');
+    return;
+  }
+
   const members = getShiftObjectsForDate(selectedDateStr);
   const item = members[index];
   if (!item || item.name !== name || item.type !== 'fixed') {
@@ -636,12 +1190,12 @@ function executeReschedule() {
 
   const dayName = getDayName(selectedDateStr);
   const used = getRescheduleUsed(name, dayName);
-  if (used >= MAX_RESCHEDULE_PER_DAY) {
+  if (currentUserRole !== 'admin' && used >= MAX_RESCHEDULE_PER_DAY) {
     alert(`${dayName}曜日枠の振替上限に達しています。`);
     return;
   }
 
-  if (members.length - 1 < MIN_STAFF) {
+  if (currentUserRole !== 'admin' && members.length - 1 < MIN_STAFF) {
     alert(`振替すると ${selectedDateStr} が${MIN_STAFF}名未満になります。\n代理を立ててください。`);
     closeModal('reschedule-modal');
     return;
@@ -653,50 +1207,40 @@ function executeReschedule() {
 
   closeModal('reschedule-modal');
   saveStorage();
-  alert(`${name}さんを ${targetDate} へ振替しました。\n（${dayName}曜枠 振替残り: ${MAX_RESCHEDULE_PER_DAY - (used + 1)}回）`);
+  alert(`${name}さんを ${targetDate} へ振替しました。\n（${dayName}曜枠 振替残り: ${Math.max(0, MAX_RESCHEDULE_PER_DAY - (used + 1))}回）`);
 }
 
-function cancelReschedule(item) {
-  if (!confirm(`${item.name}さんの振替を取り消し、元に戻しますか？`)) return;
+async function cancelReschedule(item, targetDate = selectedDateStr) {
+  if (!canOperateOn(item.name)) {
+    alert('ご自身の振替のみ取り消せます。');
+    return;
+  }
+  if (!(await askConfirm(`${item.name}さんの振替を取り消し、元に戻しますか？`))) return;
 
-  removeMember(selectedDateStr, item);
+  // 旧データ等で元の日付が無い場合は、元の枠に戻せないので振替枠の削除のみ行う
+  const originDate = item.originDate;
+
+  removeMember(targetDate, item);
+
+  if (!originDate) {
+    saveStorage();
+    alert(`${item.name}さんの振替枠を削除しました。\n（元の日付が記録されていないため、元の枠への復元はできません）`);
+    return;
+  }
 
   // 元の日に既にいる場合は二重登録しない
-  if (!hasMember(item.originDate, item.name)) {
-    addMember(item.originDate, { name: item.name, originDate: item.originDate, type: 'fixed' });
+  if (!hasMember(originDate, item.name)) {
+    addMember(originDate, { name: item.name, originDate, type: 'fixed' });
   }
   if (item.type !== 'special_transfer') {
-    updateRescheduleCount(item.name, getDayName(item.originDate), -1);
+    updateRescheduleCount(item.name, getDayName(originDate), -1);
   }
 
   saveStorage();
-  alert(`${item.name}さんの振替を取り消し、${item.originDate} の枠に戻しました。`);
+  alert(`${item.name}さんの振替を取り消し、${originDate} の枠に戻しました。`);
 }
 
-/* ============ 固定メンバー設定 ============ */
-function openMasterConfig() {
-  document.getElementById('dropdown-menu').classList.remove('show');
-  if (!requireAdmin()) return;
 
-  document.getElementById('master-inputs').innerHTML = OPEN_DAYS.map(d => `
-    <div class="form-group">
-      <label>${esc(d)}曜日の固定メンバー</label>
-      <input type="text" id="master-${esc(d)}" value="${esc((masterConfig[d] || []).join(', '))}">
-    </div>`).join('');
-  document.getElementById('master-modal').style.display = 'flex';
-}
-
-function saveMasterConfig() {
-  if (!requireAdmin()) return;
-  OPEN_DAYS.forEach(d => {
-    const raw = document.getElementById(`master-${d}`).value.split(/[,、，]/);
-    masterConfig[d] = [...new Set(raw.map(normName).filter(Boolean))];
-  });
-  dirty.master = true;
-  closeModal('master-modal');
-  saveStorage();
-  alert('固定パターンを更新しました！\n（振替・欠席などの個別変更は維持されます）');
-}
 
 /* ============ データ管理 ============ */
 function openDataModal() {
@@ -793,32 +1337,51 @@ function resetAllData() {
 }
 
 /* ============ イベント委譲（inline onclick を廃止してXSS/引用符問題を回避） ============ */
-document.getElementById('day-tabs').addEventListener('click', e => {
-  const tab = e.target.closest('.tab-item[data-date]');
-  if (tab) selectDate(tab.dataset.date);
-});
+const dayTabsEl = document.getElementById('day-tabs');
+if (dayTabsEl) {
+  dayTabsEl.addEventListener('click', e => {
+    const tab = e.target.closest('.tab-item[data-date]');
+    if (tab) selectDate(tab.dataset.date);
+  });
+}
 
-document.getElementById('member-list').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-action]');
-  if (!btn) return;
-  const item = getShiftObjectsForDate(selectedDateStr)[parseInt(btn.dataset.index, 10)];
-  if (!item) return;
+const memberListEl = document.getElementById('member-list');
+if (memberListEl) {
+  memberListEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const item = getShiftObjectsForDate(selectedDateStr)[parseInt(btn.dataset.index, 10)];
+    if (!item) return;
 
-  switch (btn.dataset.action) {
-    case 'remove-free': removeFreeShift(item); break;
-    case 'cancel-transfer': cancelReschedule(item); break;
-    case 'reschedule': openRescheduleModal(item.name, parseInt(btn.dataset.index, 10)); break;
-    case 'special': openSpecialRequestModal(item.name, parseInt(btn.dataset.index, 10)); break;
-  }
-});
+    switch (btn.dataset.action) {
+      case 'remove-free': removeFreeShift(item); break;
+      case 'cancel-transfer': cancelReschedule(item); break;
+      case 'reschedule': openRescheduleModal(item.name, parseInt(btn.dataset.index, 10)); break;
+      case 'special': openSpecialRequestModal(item.name, parseInt(btn.dataset.index, 10)); break;
+    }
+  });
+}
 
-document.getElementById('requests-list').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-req-action]');
-  if (!btn) return;
-  const id = Number(btn.dataset.id);
-  if (btn.dataset.reqAction === 'approve') approveRequest(id);
-  else if (btn.dataset.reqAction === 'reject') rejectRequest(id);
-});
+const historyListEl = document.getElementById('transfer-history-list');
+if (historyListEl) {
+  historyListEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-hist-cancel]');
+    if (!btn) return;
+    const { name, origin, target } = btn.dataset;
+    cancelReschedule({ name, originDate: origin, type: 'transfer' }, target);
+  });
+}
+
+const reqListEl = document.getElementById('requests-list');
+if (reqListEl) {
+  reqListEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-req-action]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (btn.dataset.reqAction === 'approve') approveRequest(id);
+    else if (btn.dataset.reqAction === 'reject') rejectRequest(id);
+  });
+}
 
 /* ============ 起動 ============ */
 if ('serviceWorker' in navigator) {
@@ -829,5 +1392,8 @@ if ('serviceWorker' in navigator) {
 Object.assign(window, {
   handleLogin, handleLogout, toggleDropdownMenu, openRequestsModal, openMasterConfig,
   openDataModal, changeWeek, addFreeShift, toggleReqTypeUI, closeModal, submitSpecialRequest,
-  saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData
+  saveMasterConfig, executeReschedule, exportData, importData, resetRescheduleCounts, resetAllData,
+  switchView, changeCalendarMonth, onCalendarDateClick,
+  showSignup, showLogin, handleSignup, openRolesModal, changeUserRole, sendPasswordResetEmailForUser, toggleUserDetail,
+  addMasterMember, removeMasterMember
 });
