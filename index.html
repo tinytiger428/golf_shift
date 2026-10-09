@@ -710,26 +710,36 @@
       grid-template-columns: repeat(6, 1fr);
       gap: 8px;
     }
-    @media (max-width: 440px) {
+    @media (max-width: 600px) {
       .day-checkbox-grid {
         grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+    }
+    @media (max-width: 340px) {
+      .day-checkbox-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
       }
     }
     .day-checkbox-label {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      padding: 8px 4px;
+      gap: 6px;
+      padding: 10px 8px;
+      min-height: 42px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
       background: #ffffff;
       white-space: nowrap;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
+      color: var(--text);
       user-select: none;
-      transition: all 0.15s ease;
+      box-sizing: border-box;
+      transition: all 0.15s ease-in-out;
     }
     .day-checkbox-label:hover {
       border-color: var(--primary);
@@ -740,10 +750,13 @@
       background: var(--primary-light);
       font-weight: 600;
       color: var(--primary-dark);
+      box-shadow: 0 1px 4px rgba(0, 98, 65, 0.12);
     }
     .day-checkbox-label input[type="checkbox"] {
-      width: auto;
+      width: 16px;
+      height: 16px;
       margin: 0;
+      flex-shrink: 0;
       cursor: pointer;
       accent-color: var(--primary);
     }
