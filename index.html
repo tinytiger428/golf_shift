@@ -704,6 +704,50 @@
     }
     .target-date-card .d-name { font-size: 13px; font-weight: bold; }
     .target-date-card .d-status { font-size: 10px; margin-top: 4px; }
+
+    .day-checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 440px) {
+      .day-checkbox-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    .day-checkbox-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      background: #ffffff;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+    .day-checkbox-label:hover {
+      border-color: var(--primary);
+      background: #f4f9f6;
+    }
+    .day-checkbox-label:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+    .day-checkbox-label input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
     .staff-alert-banner {
       background: var(--warning-bg);
       border: 1px solid var(--warning);
@@ -1112,13 +1156,13 @@
 
     <div class="form-group">
       <label style="font-weight: bold; margin-bottom: 8px; display: block;">出勤曜日を選択</label>
-      <div id="my-day-checkboxes" style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="月" name="my-day"> 月曜</label>
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="火" name="my-day"> 火曜</label>
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="水" name="my-day"> 水曜</label>
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="木" name="my-day"> 木曜</label>
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="金" name="my-day"> 金曜</label>
-        <label style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: #fff;"><input type="checkbox" value="土" name="my-day"> 土曜</label>
+      <div id="my-day-checkboxes" class="day-checkbox-grid">
+        <label class="day-checkbox-label"><input type="checkbox" value="月" name="my-day"> <span>月曜</span></label>
+        <label class="day-checkbox-label"><input type="checkbox" value="火" name="my-day"> <span>火曜</span></label>
+        <label class="day-checkbox-label"><input type="checkbox" value="水" name="my-day"> <span>水曜</span></label>
+        <label class="day-checkbox-label"><input type="checkbox" value="木" name="my-day"> <span>木曜</span></label>
+        <label class="day-checkbox-label"><input type="checkbox" value="金" name="my-day"> <span>金曜</span></label>
+        <label class="day-checkbox-label"><input type="checkbox" value="土" name="my-day"> <span>土曜</span></label>
       </div>
     </div>
 
