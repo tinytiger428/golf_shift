@@ -806,7 +806,13 @@ function renderContent() {
       </div>`;
   }
 
-  document.getElementById('member-list').innerHTML = members.map((item, index) => {
+  // 自分の名前は常に一番上に表示（data-index は元の並びの番号のまま保つ）
+  const isMine = item => !!currentMemberName && normName(item.name) === normName(currentMemberName);
+  const ordered = members
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => Number(isMine(b.item)) - Number(isMine(a.item)) || a.index - b.index);
+
+  document.getElementById('member-list').innerHTML = ordered.map(({ item, index }) => {
     const used = getRescheduleUsed(item.name, dayName);
     const remaining = Math.max(0, MAX_RESCHEDULE_PER_DAY - used);
 
@@ -833,7 +839,7 @@ function renderContent() {
     }
 
     return `
-      <div class="member-card">
+      <div class="member-card${isMine(item) ? ' mine' : ''}">
         <div class="member-info">
           <div><span class="member-name">${esc(item.name)}</span>${tag}</div>
           <span class="member-sub">${esc(dayName)}曜枠 振替残: ${remaining} / ${MAX_RESCHEDULE_PER_DAY} 回</span>
